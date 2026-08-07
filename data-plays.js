@@ -243,7 +243,7 @@ window.BL_PLAYS = [
                 kind: 'do',
                 steps: [
                     'Change the same password anywhere else it was used.',
-                    'Switch to number matching or, better, a passkey so blind approval stops being possible.',
+                    'Move that account to a **passkey** if it offers one. Number matching — where the app shows you a number to type — already blocks blind tapping on the big providers, but a passkey removes the prompt an attacker can send you at all.',
                     'Review sign-in history for successful logins from unfamiliar places.',
                 ],
             },
@@ -1868,7 +1868,7 @@ window.BL_PLAYS = [
                 steps: [
                     'Revoke refresh tokens and sign the user out of all sessions across every identity provider and federated application.',
                     'Reset the password **after** revocation, so a stolen token cannot be used to reset it back.',
-                    'Where available, enable token protection / token binding and continuous access evaluation so revocation propagates in minutes rather than at token expiry.',
+                    'Check that **continuous access evaluation** has not been disabled for these users by a Conditional Access policy — it is on by default, and it is what makes revocation propagate in minutes instead of at token expiry.',
                     'Block the attacker infrastructure by ASN or IP where you can do so without collateral damage, as a stopgap only.',
                     'If the source was an infostealer, the endpoint is compromised: isolate it and treat every credential entered on it as burned.',
                     '**Verify revocation worked.** Confirm the session is actually gone rather than assuming the button did it — recheck activity fifteen minutes later.',
@@ -1996,7 +1996,8 @@ window.BL_PLAYS = [
                 h: 'Fix the class',
                 kind: 'note',
                 steps: [
-                    'Enable number matching and additional context on push, so blind approval stops being possible.',
+                    'Turn on **additional context** — application name and sign-in location on the prompt. Number matching itself has been enforced for all Microsoft Authenticator push notifications since May 2023 and cannot be switched off, so the task is confirming your **third-party** MFA providers match it, not enabling it in Entra.',
+                    'Better still, move the affected population off push entirely to a **phishing-resistant** method. Number matching raises the bar; it does not remove the class.',
                     'Alert on MFA-method registration as a first-class detection, not a report line.',
                     'Harden the helpdesk identity-verification process. Assisted MFA resets are a well-worn route into large organisations, and a scripted callback requirement closes it.',
                     'Rate-limit or lock out on repeated push denials rather than letting the attacker keep trying.',
@@ -2004,7 +2005,7 @@ window.BL_PLAYS = [
             },
         ],
         queries: [
-            { label: 'Repeated MFA denials or timeouts', lang: 'KQL', q: 'SigninLogs\n| where TimeGenerated > ago(24h)\n| where ResultType in ("500121", "50074", "50076")\n| summarize attempts = count(), ips = make_set(IPAddress) by UserPrincipalName, bin(TimeGenerated, 1h)\n| where attempts > 5\n| order by attempts desc' },
+            { label: 'Repeated MFA denials or timeouts', lang: 'KQL', q: '// 500121 = strong auth failed (denied, timed out, or fraud reported)\n// 50074  = user did not satisfy the MFA challenge\n// Deliberately NOT 50076 — that is the ordinary "MFA required" interrupt and\n// fires on healthy sign-ins, which would bury the pattern you are hunting.\nSigninLogs\n| where TimeGenerated > ago(24h)\n| where ResultType in ("500121", "50074")\n| summarize attempts = count(), ips = make_set(IPAddress), apps = make_set(AppDisplayName, 10)\n          by UserPrincipalName, bin(TimeGenerated, 1h)\n| where attempts > 5\n| order by attempts desc' },
         ],
         terms: ['mfa-fatigue', 'mfa', 'credential-stuffing'],
         defend: ['org-identity'],

@@ -701,7 +701,7 @@ window.BL_DEFEND.push(
         steps: [
             'Create **two break-glass accounts**: cloud-only, `.onmicrosoft.com`, excluded from all Conditional Access, with FIDO2 keys or 30+ character passwords split in two physical safes. Alert on any sign-in by either. Test them quarterly.',
             'Require **phishing-resistant MFA** (FIDO2, passkeys, Windows Hello for Business, certificate-based) for every privileged role. Do the admins first; nothing else on this list matters as much.',
-            'Require MFA for all users, and **block legacy authentication** outright. Legacy auth cannot do MFA, so it is the standing bypass of everything else.',
+            'Require MFA for all users, and **block legacy authentication** outright. Legacy auth cannot do MFA, so it is the standing bypass of everything else. Basic authentication is already retired across Exchange Online — the survivor to go and disable per-mailbox is **SMTP AUTH**, usually left on years ago for a printer or a line-of-business app.',
             'Turn on **PIM**: remove standing assignments, make roles eligible, require justification, approval and MFA to activate, and set a short maximum duration.',
             'Restrict **user consent** to verified publishers and low-impact permissions, and enable the admin consent workflow. This removes an entire attack class in one setting.',
             'Restrict who may **register applications**, **create tenants** and **join or register devices**. The defaults are permissive.',

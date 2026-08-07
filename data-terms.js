@@ -913,7 +913,7 @@ window.BL_TERMS = [
         what: 'A login secret stored on your device and unlocked by your face, fingerprint or device PIN. Nothing is typed, nothing is sent, and it only works on the exact domain it was created for.',
         spot: [
             'Because the browser checks the domain, a phishing site cannot use it — this is the single biggest upgrade available to a normal person.',
-            'Passkeys sync through your Apple, Google or password-manager account, so a lost phone is not a lockout.',
+            'Most passkeys **sync** through your Apple, Google or password-manager account, so a lost phone is not a lockout. A physical security key (a YubiKey and similar) does not sync — with those, register a second one and keep it somewhere else.',
             'Turn it on for email first. Email is the master key to everything else.',
         ],
         eg: 'A perfect copy of your bank’s login page cannot trigger your passkey, because the passkey is bound to the real domain and refuses to appear.',

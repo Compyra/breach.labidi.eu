@@ -105,11 +105,12 @@
             id: 'legacy-auth',
             sev: 'high',
             title: 'Legacy authentication protocol',
-            why: 'Legacy protocols cannot perform MFA, so they are the standing bypass of every modern control you have. Attackers try them first precisely for that reason.',
+            why: 'Legacy protocols cannot perform MFA, so they bypass every modern control you have. Basic authentication was retired across Exchange Online, which changes how to read this: a **failed** legacy attempt is now routine background noise, while a **successful** one means either SMTP AUTH (still permitted per-mailbox) or a workload where basic auth survives — and that is a genuine finding worth chasing.',
             actions: [
-                'Block legacy authentication tenant-wide in Conditional Access.',
-                'Identify what still needs it before enforcing, using the sign-in logs themselves.',
-                'If this succeeded from an unfamiliar source, treat the credential as compromised.',
+                'Check the result first. Sort the successes from the failures before spending any time here.',
+                'For any success: identify the protocol and the mailbox. `Authenticated SMTP` is the usual survivor — it is enabled per-mailbox and frequently forgotten after a printer or line-of-business app was set up years ago.',
+                'If it succeeded from an unfamiliar source, treat the credential as compromised: these accounts rarely have MFA and their passwords are often ancient.',
+                'Block legacy authentication tenant-wide in Conditional Access, and disable SMTP AUTH per-mailbox where nothing needs it.',
             ],
             link: '../#/defend/entra-hardening',
             match: ev => ev.src === 'signin' &&

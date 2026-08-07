@@ -115,7 +115,7 @@ window.BL_DEFEND = [
         steps: [
             'Add a **passkey** wherever it is offered — email, bank, Microsoft or Google account, social media, password manager.',
             'Where passkeys are not offered, prefer an authenticator app over SMS.',
-            'Turn on number matching for push approvals if your provider supports it.',
+            'If a push prompt only ever says "approve or deny", check the app’s settings for a stronger option — Microsoft and Google already show a number you must type, which is what stops a half-asleep thumb.',
             'Remove SMS as a factor **only after** a stronger one is confirmed working, and only if it is not your sole recovery route.',
             'Register a second passkey or a backup security key so losing a phone is not a lockout.',
             'Say it out loud once so it sticks: **a code is never read aloud to anybody, for any reason, ever.**',
@@ -711,7 +711,7 @@ window.BL_DEFEND = [
         steps: [
             'Roll out **phishing-resistant MFA** (FIDO2 / passkeys / certificate-based) for admins first, then all staff. Nothing else on this list matters as much.',
             'Enforce device compliance or managed-device conditional access, so a stolen token is useless from an unmanaged host.',
-            'Enable token protection / continuous access evaluation so revocation is fast rather than eventual.',
+            'Confirm **continuous access evaluation** is on — it is the default in Entra, but a Conditional Access policy can disable it, and without it revocation waits for token expiry. Add **token protection** where your clients support it, so a token cannot be replayed off the device it was issued to.',
             'Block legacy authentication protocols outright.',
             'Restrict user consent for third-party apps and enable an admin consent workflow.',
             'Alert on new inbox rules, new mail forwarding, new MFA method registration and new OAuth grants — these are the persistence primitives, and they are cheap to detect.',
