@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en" data-aud="pro">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Breachlight structural audit</title>
+    <!--
+      Dev harness. Loads the real site scripts against a minimal shell and
+      prints BL.audit(), so the structure can be verified headlessly:
+
+        powershell -File logscope/run-selftest.ps1 -Url http://127.0.0.1:8877/audit.html
+
+      Not linked from the site and not in the service worker shell.
+      There is precedent for this pattern in workshop/personality-library.
+    -->
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            padding: 1.5rem
+        }
+
+        pre {
+            white-space: pre-wrap
+        }
+
+        .ok {
+            color: #5fd39b;
+            font-weight: 700
+        }
+
+        .bad {
+            color: #ff6b6b;
+            font-weight: 700
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Breachlight structural audit</h1>
+    <p id="verdict" class="lede">running…</p>
+    <pre id="result"></pre>
+    <h2>Search spot-checks</h2>
+    <ul id="searchResults"></ul>
+
+    <!-- the element ids app.js expects, so boot() completes normally -->
+    <div hidden>
+        <nav id="rail"></nav>
+        <main id="main"></main>
+        <input id="q">
+        <button id="installBtn" hidden></button>
+        <span id="verLine"></span>
+        <div id="toast"></div>
+        <button data-aud-set="user"></button>
+        <button data-aud-set="pro"></button>
+    </div>
+
+    <script src="core.js"></script>
+
+    <script src="data-terms.js"></script>
+    <script src="data-defend.js"></script>
+    <script src="data-plays.js"></script>
+    <script src="data-trees.js"></script>
+    <script src="data-logs.js"></script>
+    <script src="data-ad-entra.js"></script>
+    <script src="data-ad-entra-plays.js"></script>
+    <script src="data-phish-plays.js"></script>
+
+    <script src="pages.js"></script>
+    <script src="app.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var r = window.BL.audit();
+            var v = document.getElementById('verdict');
+            v.textContent = r.problems.length
+                ? r.problems.length + ' PROBLEM(S)'
+                : 'clean — ' + r.trees + ' trees / ' + r.nodes + ' nodes / ' + r.plays + ' plays / ' +
+                r.terms + ' terms / ' + r.defences + ' defences / ' + r.auditOps + ' audit ops / ' +
+                r.logSources + ' log sources / ' + r.symptoms + ' symptoms';
+            v.className = r.problems.length ? 'lede bad' : 'lede ok';
+            document.getElementById('result').textContent =
+                r.problems.length ? r.problems.join('\n') : JSON.stringify(r, null, 2);
+
+            /* Search must find the thing people actually type. A structurally
+               perfect site that nobody can search is still broken.
+               Asserted on the DESTINATION, not the title: the audit-operation
+               entries and the page that lists them share a href, and either
+               landing is correct. */
+            var CHECKS = [
+                ['money gone from my bank', '#/play/card-fraud'],
+                ['i clicked a link', '#/play/clicked-link'],
+                ['squishing', '#/terms/quishing'],
+                ['one time use card number', '#/terms/vcc'],
+                ['should i click links in email', '#/defend/never-click'],
+                ['user was phished', '#/t/pro-phish'],
+                ['device code phishing', '#/play/pro-device-code'],
+                ['which logs should i check', '#/play/pro-log-collection'],
+                ['enterprise application created', '#/play/pro-audit-triage'],
+                ['consent to application', '#/play/pro-audit-triage'],
+                ['client secret added to app', '#/play/pro-audit-triage'],
+                ['helpdesk reset mfa', '#/play/pro-helpdesk'],
+                ['mailitemsaccessed', '#/play/pro-audit-triage'],
+                ['unified audit log', '#/play/pro-log-collection'],
+                ['non-interactive sign in logs', '#/play/pro-log-collection'],
+                ['temporary access pass', '#/terms/tap'],
+                ['dcsync', '#/play/pro-ad-dcsync'],
+                ['krbtgt reset', '#/play/pro-ad-golden'],
+                ['esc1', '#/terms/adcs-esc'],
+                ['azureadssoacc', '#/terms/seamless-sso'],
+                ['device registered', '#/play/pro-device-registered'],
+                ['golden saml', '#/play/pro-entra-federation'],
+                ['inbox rule created', '#/play/pro-audit-triage'],
+                ['ediscovery export', '#/play/pro-audit-triage'],
+                ['unread mail marked read', '#/play/mailbox-compromise'],
+                ['sos only no signal', '#/play/sim-lost-signal'],
+                ['safe account', '#/terms/safe-account'],
+                ['gift card codes', '#/play/gift-card-paid'],
+                ['is the padlock safe', '#/terms/padlock'],
+                ['what does hashed mean', '#/terms/password-hash'],
+                ['50199', '#/play/pro-device-code'],
+                ['dark web alert', '#/terms/dark-web'],
+                ['my phone has a virus', '#/play/phone-malware'],
+                ['app wont uninstall', '#/play/phone-malware'],
+                ['my computer is slow ads everywhere', '#/play/computer-malware']
+            ];
+            var ul = document.getElementById('searchResults'), pass = 0;
+            CHECKS.forEach(function (c) {
+                var hits = window.BL.search(c[0]);
+                var top = hits.length ? hits[0].it.title + ' [' + hits[0].it.href + ']' : '(nothing)';
+                var top3 = hits.slice(0, 3).map(function (h) { return h.it.href; });
+                var good = top3.indexOf(c[1]) >= 0;
+                if (good) pass++;
+                var li = document.createElement('li');
+                li.className = good ? 'ok' : 'bad';
+                li.textContent = (good ? '✓ ' : '✗ ') + '"' + c[0] + '" → ' + top +
+                    (good ? '' : '   (wanted: ' + c[1] + ')');
+                ul.appendChild(li);
+            });
+            var h = document.createElement('p');
+            h.className = pass === CHECKS.length ? 'ok' : 'bad';
+            h.id = 'searchVerdict';
+            h.textContent = pass + ' / ' + CHECKS.length + ' search checks in top 3';
+            ul.parentNode.insertBefore(h, ul);
+        });
+    </script>
+</body>
+
+</html>

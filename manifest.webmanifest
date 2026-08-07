@@ -1,0 +1,20 @@
+{
+    "name": "Breachlight — incident triage",
+    "short_name": "Breachlight",
+    "description": "What to do the moment after you clicked. Triage decision trees, playbooks and a plain-language glossary for phishing, stolen credentials, missing money and hijacked accounts — with a separate mode for security responders.",
+    "start_url": "./",
+    "scope": "./",
+    "display": "standalone",
+    "orientation": "any",
+    "background_color": "#0a0c12",
+    "theme_color": "#0a0c12",
+    "categories": ["education", "productivity", "utilities"],
+    "icons": [
+        {
+            "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='96' fill='%230a0c12'/%3E%3Cpath d='M256 64 L384 160 v128 c0 80-56 136-128 160-72-24-128-80-128-160V160Z' fill='none' stroke='%23ffb347' stroke-width='28' stroke-linejoin='round'/%3E%3Ccircle cx='256' cy='248' r='40' fill='%23ffb347'/%3E%3Cpath d='M256 288v72' stroke='%23ffb347' stroke-width='28' stroke-linecap='round'/%3E%3C/svg%3E",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any"
+        }
+    ]
+}
