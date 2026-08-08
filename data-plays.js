@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Breachlight — data-plays.js
+ Breachlight: data-plays.js
    --------------------------------------------------------------------------
    The playbooks. A tree routes you here; this is where the actual instructions
    live. Written to be read by someone whose hands are shaking, or by someone
@@ -13,18 +13,18 @@
      glyph     one character
      urgency   'critical' | 'high' | 'normal'  → drives the badge and ordering
      clock     one line about the time pressure, or ''
-     lede      one paragraph of orientation and reassurance
-     signs[]   "this is you if…" — so a mis-routed reader leaves early
-     sections[] { h, kind, steps[] }
-                 kind: first | do | dont | note | evidence
-     queries[] { label, lang, q }   pro only — starting points, not answers
-     terms[]   glossary ids ·  defend[] defence ids ·  plays[] related plays
-     keys      search keywords, in the words people actually type
-   ========================================================================== */
+ lede one paragraph of orientation and reassurance
+ signs[] "this is you if…" (so a mis-routed reader leaves early
+ sections[] { h, kind, steps[] }
+ kind: first | do | dont | note | evidence
+ queries[] { label, lang, q } pro only) starting points, not answers
+ terms[] glossary ids · defend[] defence ids · plays[] related plays
+ keys search keywords, in the words people actually type
+ ========================================================================== */
 
 window.BL_PLAY_CATS = [
-    /* user */
-    { id: 'phish', aud: 'user', title: 'I interacted with something', glyph: '🎣' },
+ /* user */
+ { id: 'phish', aud: 'user', title: 'I interacted with something', glyph: '🎣' },
     { id: 'account', aud: 'user', title: 'My account is affected', glyph: '🔓' },
     { id: 'money', aud: 'user', title: 'Money is involved', glyph: '💸' },
     { id: 'device', aud: 'user', title: 'My device is affected', glyph: '💻' },
@@ -50,8 +50,8 @@ window.BL_PLAYS = [
         title: 'I clicked a link in a suspicious message',
         glyph: '👆',
         urgency: 'normal',
-        clock: 'You have time. Clicking alone rarely does damage — what you did next is what matters.',
-        lede: 'Take a breath. On an up-to-date phone or computer, simply loading a page is very unlikely to do anything at all. The dangerous parts come afterwards: typing a password, entering a code, downloading a file, or being told to paste something. If none of those happened, you are probably fine — but let us make sure.',
+ clock: 'You have time. Clicking alone rarely does damage. What you did next is what matters.',
+ lede: 'Take a breath. On an up-to-date phone or computer, simply loading a page is very unlikely to do anything at all. The dangerous parts come afterwards: typing a password, entering a code, downloading a file, or being told to paste something. If none of those happened, you are probably fine, but let us make sure.',
         signs: [
             'You tapped or clicked a link and a page opened.',
             'You did not type a password, a card number or a code.',
@@ -62,17 +62,17 @@ window.BL_PLAYS = [
                 h: 'Do this now',
                 kind: 'first',
                 steps: [
-                    'Close the tab. Do not go back to "have another look" — curiosity is how the second half of these attacks lands.',
+ 'Close the tab. Do not go back to "have another look". Curiosity is how the second half of these attacks lands.',
                     'Think back honestly: **did you type anything?** A password, a card number, a six-digit code, a date of birth. If yes, stop here and open the playbook for what you entered.',
                     'Check your Downloads folder for anything that arrived in the last few minutes. If something did, delete it without opening it.',
-                    'Did the page tell you to press a key combination, open a terminal, or paste something? If yes, go to **I pasted a command** — that one is serious.',
+ 'Did the page tell you to press a key combination, open a terminal, or paste something? If yes, go to **I pasted a command**. That one is serious.',
                 ],
             },
             {
                 h: 'Then, within the hour',
                 kind: 'do',
                 steps: [
-                    'Run a full scan with the security software already on the device. Do not install a new "cleaner" you found by searching — that is its own scam.',
+ 'Run a full scan with the security software already on the device. Do not install a new "cleaner" you found by searching. That is its own scam.',
                     'Restart the device. It costs nothing and completes any pending updates.',
                     'Look at recent sign-in activity for the account the message pretended to be from. Most services show this under Security.',
                     'If it was a work device or a work message, **report it to your IT or security team** even though nothing happened. They can pull the same message out of everyone else’s inbox.',
@@ -110,10 +110,10 @@ window.BL_PLAYS = [
         glyph: '🔑',
         urgency: 'critical',
         clock: 'Minutes matter. Assume they are logging in right now, because automated kits often do it within seconds.',
-        lede: 'This is a real compromise and speed genuinely helps. Everything below is doable in about ten minutes. Do it in order, because changing the password alone is not enough — the part people skip is the part that keeps attackers inside.',
+ lede: 'This is a real compromise and speed genuinely helps. Everything below is doable in about ten minutes. Do it in order, because changing the password alone is not enough. The part people skip is the part that keeps attackers inside.',
         signs: [
             'You entered a username and password on a page you reached from a message.',
-            'The page may have then said "error, try again" and sent you to the real site — that is the classic sign the credential was harvested.',
+ 'The page may have then said "error, try again" and sent you to the real site. That is the classic sign the credential was harvested.',
             'Or you approved an MFA prompt and everything seemed to work normally.',
         ],
         sections: [
@@ -121,11 +121,11 @@ window.BL_PLAYS = [
                 h: 'Do this now, in this order',
                 kind: 'first',
                 steps: [
-                    'Go to the real service **by typing the address or opening the app yourself** — not from any link. Change the password to something new and unique.',
+ 'Go to the real service **by typing the address or opening the app yourself**, not from any link. Change the password to something new and unique.',
                     '**Sign out of all other sessions.** Look for "sign out everywhere", "log out of all devices" or "active sessions". This is the step that actually evicts them: a stolen session cookie survives a password change.',
                     'Check the account’s security settings for: a new phone number, a new recovery email, a new authenticator or passkey, and new "trusted devices". Remove anything you do not recognise.',
                     'If it was an email account, check **forwarding and rules** now. A hidden forwarding rule is how one bad afternoon becomes six months of reading your mail.',
-                    'Turn on the strongest second factor available — ideally a passkey.',
+ 'Turn on the strongest second factor available, ideally a passkey.',
                 ],
             },
             {
@@ -134,8 +134,8 @@ window.BL_PLAYS = [
                 steps: [
                     'Change the password anywhere else you used the same one, or anything close to it. Start with email, bank, phone account.',
                     'If the account holds payment details, check recent orders, saved addresses and any linked cards.',
-                    'Look through the last few days of sign-in history. Note anything unfamiliar — you may need the dates later.',
-                    'If it was a **work** account: tell IT or security immediately, and say plainly that you entered credentials. They need to revoke tokens centrally, and they are not going to be angry — a fast report is the best possible outcome for them.',
+ 'Look through the last few days of sign-in history. Note anything unfamiliar. You may need the dates later.',
+ 'If it was a **work** account: tell IT or security immediately, and say plainly that you entered credentials. They need to revoke tokens centrally, and they are not going to be angry. A fast report is the best possible outcome for them.',
                     'If it was your **bank**: phone the number on the back of your card and tell them. Do not wait for something to happen.',
                 ],
             },
@@ -171,7 +171,7 @@ window.BL_PLAYS = [
         glyph: '🔢',
         urgency: 'critical',
         clock: 'That code was an authorisation, and it may already have been used. Act now.',
-        lede: 'A one-time code is not a password check — it is a signature. It approves a payment, registers a new device or completes a password reset. Someone who now has yours has done one of those things, usually within seconds. This is fixable, but not by waiting.',
+ lede: 'A one-time code is not a password check. It is a signature. It approves a payment, registers a new device or completes a password reset. Someone who now has yours has done one of those things, usually within seconds. This is fixable, but not by waiting.',
         signs: [
             'A caller asked you to read out a code "to verify" or "to cancel a payment".',
             'You typed a code into a page you reached from a message.',
@@ -182,7 +182,7 @@ window.BL_PLAYS = [
                 h: 'Do this now',
                 kind: 'first',
                 steps: [
-                    'Reread the message that carried the code. The text above the digits says what it was for — a payment, a new payee, a device registration, a reset. That tells you what to undo.',
+ 'Reread the message that carried the code. The text above the digits says what it was for: a payment, a new payee, a device registration, a reset. That tells you what to undo.',
                     'If the code was for a **bank**: phone the number on the back of your card immediately and say a code was disclosed. Ask them to stop pending payments and check for new payees and new devices.',
                     'If the code was for an **online account**: change the password, then sign out of all sessions, then remove any unrecognised device, phone number or authenticator.',
                     'If a new device or phone number was registered, remove it and re-register your own factor.',
@@ -194,7 +194,7 @@ window.BL_PLAYS = [
                 steps: [
                     'Check for a new payee or standing order you did not create.',
                     'Check whether your address, phone number or email on the account has been changed.',
-                    'Report it to the police or the national fraud reporting service — you will need the reference for any dispute.',
+ 'Report it to the police or the national fraud reporting service. You will need the reference for any dispute.',
                     'Write down the caller’s number, the time, and what was said, while it is fresh.',
                 ],
             },
@@ -221,7 +221,7 @@ window.BL_PLAYS = [
         glyph: '🔔',
         urgency: 'critical',
         clock: 'Someone already has your password. That is what the prompt proves.',
-        lede: 'A prompt you did not trigger is not a glitch. It means somebody, somewhere, typed your correct password and the only thing between them and your account was your thumb. If you approved it, they are in. If you denied it, you are still in trouble — just less of it.',
+ lede: 'A prompt you did not trigger is not a glitch. It means somebody, somewhere, typed your correct password and the only thing between them and your account was your thumb. If you approved it, they are in. If you denied it, you are still in trouble, just less of it.',
         signs: [
             'Repeated approval requests, often at night or during a meeting.',
             'You tapped Approve to make them stop, or by accident.',
@@ -235,7 +235,7 @@ window.BL_PLAYS = [
                     '**Change the password immediately**, whether or not you approved anything. The prompts prove the password is known.',
                     'Sign out of all sessions on that account.',
                     'Check registered authentication methods and remove any device, phone number or app you do not recognise.',
-                    'If it is a work account, phone IT or security now and tell them exactly what you tapped. Do not email — email may be the compromised thing.',
+ 'If it is a work account, phone IT or security now and tell them exactly what you tapped. Do not email. Email may be the compromised thing.',
                 ],
             },
             {
@@ -243,7 +243,7 @@ window.BL_PLAYS = [
                 kind: 'do',
                 steps: [
                     'Change the same password anywhere else it was used.',
-                    'Move that account to a **passkey** if it offers one. Number matching — where the app shows you a number to type — already blocks blind tapping on the big providers, but a passkey removes the prompt an attacker can send you at all.',
+ 'Move that account to a **passkey** if it offers one. Number matching (where the app shows you a number to type) already blocks blind tapping on the big providers, but a passkey removes the prompt an attacker can send you at all.',
                     'Review sign-in history for successful logins from unfamiliar places.',
                 ],
             },
@@ -269,7 +269,7 @@ window.BL_PLAYS = [
         title: 'I opened an attachment or ran a file',
         glyph: '📎',
         urgency: 'high',
-        clock: 'Act within the hour. If it ran, the first minute did the damage — the rest is containment.',
+ clock: 'Act within the hour. If it ran, the first minute did the damage. The rest is containment.',
         lede: 'The important question is what kind of file it was and whether anything asked for permission. A viewed PDF is usually harmless. An installer you approved, a macro you enabled, or a shortcut you double-clicked is a different matter and should be treated as a real infection.',
         signs: [
             'You opened an attachment from an unexpected message.',
@@ -281,10 +281,10 @@ window.BL_PLAYS = [
                 h: 'Do this now',
                 kind: 'first',
                 steps: [
-                    '**Disconnect the device from the network** — turn off Wi-Fi, unplug the cable. Do not power it off if you may need someone to investigate; isolation is enough.',
+ '**Disconnect the device from the network**: turn off Wi-Fi, unplug the cable. Do not power it off if you may need someone to investigate; isolation is enough.',
                     'If it is a work device, phone IT or security immediately. Do not carry on using it.',
                     'On a personal device, run a full scan with your existing security software.',
-                    'Assume every password saved in that browser is now known. Change the important ones **from a different, clean device** — a phone, a tablet, another computer.',
+ 'Assume every password saved in that browser is now known. Change the important ones **from a different, clean device**: a phone, a tablet, another computer.',
                 ],
             },
             {
@@ -302,7 +302,7 @@ window.BL_PLAYS = [
                 kind: 'note',
                 steps: [
                     'Dangerous by design: `.exe`, `.msi`, `.scr`, `.lnk`, `.js`, `.vbs`, `.ps1`, `.bat`, `.cmd`, `.iso`, `.img`, `.hta`, and Office files where you enabled macros.',
-                    'A password-protected ZIP with the password in the email body is not security — it exists to blind the scanner.',
+ 'A password-protected ZIP with the password in the email body is not security. It exists to blind the scanner.',
                     'Watch for double extensions: `invoice.pdf.exe`, `photo.jpg.lnk`. Windows hides the last one by default, which is precisely why it is used.',
                     'Merely previewing a modern PDF or Office document without enabling anything is, in practice, low risk.',
                 ],
@@ -334,7 +334,7 @@ window.BL_PLAYS = [
                 kind: 'first',
                 steps: [
                     '**Disconnect from the network.** Wi-Fi off, cable out.',
-                    'If it is a work device, phone security now. Say the words "I pasted a command from a website" — they will understand immediately.',
+ 'If it is a work device, phone security now. Say the words "I pasted a command from a website". They will understand immediately.',
                     'Get a **different, clean device** and use it for everything below. Do not change any password on the affected machine.',
                     'From the clean device: change your email password first, then banking, then the password manager, then everything else important.',
                     'From the clean device: **sign out of all sessions** on each account. The stolen cookies are the real prize and they ignore password changes.',
@@ -381,7 +381,7 @@ window.BL_PLAYS = [
         glyph: '🔳',
         urgency: 'high',
         clock: 'Depends entirely on what you did after scanning. Scanning alone is just opening a link.',
-        lede: 'A QR code is only a link you could not read in advance. Scanning it opened a page — that on its own is rarely harmful. What matters is whether that page then took a login, a card number or a payment. Work out which and act accordingly.',
+ lede: 'A QR code is only a link you could not read in advance. Scanning it opened a page. That on its own is rarely harmful. What matters is whether that page then took a login, a card number or a payment. Work out which and act accordingly.',
         signs: [
             'You scanned a code on a parking meter, charger, poster, table or letter.',
             'You scanned a code inside an email, a PDF or a letter about "renewing" something.',
@@ -403,7 +403,7 @@ window.BL_PLAYS = [
                 kind: 'do',
                 steps: [
                     'If it was a **work** email containing a QR code, report it. That pattern is used specifically to sidestep company link scanning and to move you onto an unmanaged phone.',
-                    'If it was a sticker in public — a parking meter, an EV charger, a restaurant table — photograph it and tell the operator. Others are scanning it right now.',
+ 'If it was a sticker in public (a parking meter, an EV charger, a restaurant table) photograph it and tell the operator. Others are scanning it right now.',
                     'Check your phone for apps you do not recognise, and for VPN or device-management profiles you did not create.',
                 ],
             },
@@ -444,12 +444,12 @@ window.BL_PLAYS = [
                 kind: 'first',
                 steps: [
                     'Change the password, from a device you trust, having reached the site yourself.',
-                    '**Sign out of all sessions.** Without this, the password change is cosmetic — a live session keeps working.',
+ '**Sign out of all sessions.** Without this, the password change is cosmetic. A live session keeps working.',
                     'Open **Rules and Forwarding** and delete anything you did not create. Look especially for rules with blank or one-character names, and rules that move messages to Archive, RSS Feeds or Deleted Items.',
                     'Check **auto-forwarding** to an external address. This is the single most common thing left behind.',
                     'Check the reply-to address, the signature, and any "send as" or delegate permissions.',
                     'Review registered MFA methods, recovery email and recovery phone. Remove anything unfamiliar and add a passkey.',
-                    'Review connected apps and revoke everything you do not actively use — an app grant survives a password change.',
+ 'Review connected apps and revoke everything you do not actively use. An app grant survives a password change.',
                 ],
             },
             {
@@ -458,7 +458,7 @@ window.BL_PLAYS = [
                 steps: [
                     'List the accounts that use this address for password resets: bank, government, cloud storage, social, shopping. Check each for changed details and reset the important ones.',
                     'Search Sent and Deleted for messages sent in your name, especially anything about invoices or payments.',
-                    'Warn anyone who may have received a message from "you" — particularly if it discussed money.',
+ 'Warn anyone who may have received a message from "you": particularly if it discussed money.',
                     'Check whether the address or contact details on any of your financial accounts were changed.',
                 ],
             },
@@ -467,7 +467,7 @@ window.BL_PLAYS = [
                 kind: 'evidence',
                 steps: [
                     'Before deleting the rogue rules, photograph or screenshot them with their exact names and conditions.',
-                    'Export or screenshot the sign-in history — dates, times, countries, addresses. Do it early; retention windows are short.',
+ 'Export or screenshot the sign-in history: dates, times, countries, addresses. Do it early; retention windows are short.',
                     'Keep a dated written log. If money is involved, your bank and the police will ask for exactly this.',
                 ],
             },
@@ -475,7 +475,7 @@ window.BL_PLAYS = [
                 h: 'If it is a work mailbox',
                 kind: 'note',
                 steps: [
-                    'Phone IT or security rather than emailing them — their view of your mailbox may be better than yours, and email is the compromised channel.',
+ 'Phone IT or security rather than emailing them. Their view of your mailbox may be better than yours, and email is the compromised channel.',
                     'Do not delete anything until they say so. Rules, headers and audit logs are the investigation.',
                 ],
             },
@@ -490,7 +490,7 @@ window.BL_PLAYS = [
         id: 'account-takeover',
         aud: 'user',
         cat: 'account',
-        title: 'I am locked out — someone has taken my account',
+ title: 'I am locked out. Someone has taken my account',
         glyph: '🚫',
         urgency: 'critical',
         clock: 'Recovery windows shrink as the attacker replaces recovery details. Start the official process immediately.',
@@ -505,7 +505,7 @@ window.BL_PLAYS = [
                 h: 'Do this now',
                 kind: 'first',
                 steps: [
-                    'Start the provider’s official account-recovery process — reached by typing their address yourself, never through a search advert.',
+ 'Start the provider’s official account-recovery process: reached by typing their address yourself, never through a search advert.',
                     'Use a device and network you have used with that account before. Providers weigh familiar devices heavily.',
                     'Give as much verifiable detail as you can: the date you created the account, old passwords, contacts, folder names, purchase receipts.',
                     'Secure your **email account first** if it is still yours. Every other recovery route depends on it.',
@@ -516,7 +516,7 @@ window.BL_PLAYS = [
                 h: 'Then, today',
                 kind: 'do',
                 steps: [
-                    'Warn your contacts by another channel that the account is not yours — before it is used to scam them.',
+ 'Warn your contacts by another channel that the account is not yours. Before it is used to scam them.',
                     'If the account holds payment details, tell your bank and watch for charges.',
                     'Change the same password anywhere else it was used.',
                     'Report to the police or national fraud service if money or identity documents are involved, and keep the reference.',
@@ -528,7 +528,7 @@ window.BL_PLAYS = [
                 steps: [
                     'Do not use "account recovery services" advertised on social media or in search results. Every single one is a recovery scam. Nobody has a back door into a major provider.',
                     'Do not pay anyone claiming to be able to restore your account.',
-                    'Do not create a new account and abandon the old one until you have exhausted recovery — the old one is still being used as you.',
+ 'Do not create a new account and abandon the old one until you have exhausted recovery. The old one is still being used as you.',
                 ],
             },
             {
@@ -556,7 +556,7 @@ window.BL_PLAYS = [
         glyph: '📣',
         urgency: 'high',
         clock: 'Your friends are being scammed in your name right now. Warn them early, even before you regain control.',
-        lede: 'Hijacked social accounts are rarely the goal in themselves — they are a delivery mechanism for scamming the people who trust you. Investment "opportunities", crisis appeals and fake marketplace listings all land far better from a real friend’s account.',
+ lede: 'Hijacked social accounts are rarely the goal in themselves. They are a delivery mechanism for scamming the people who trust you. Investment "opportunities", crisis appeals and fake marketplace listings all land far better from a real friend’s account.',
         signs: [
             'Posts, stories or direct messages you did not send.',
             'Friends asking whether a message from you is genuine.',
@@ -568,7 +568,7 @@ window.BL_PLAYS = [
                 kind: 'first',
                 steps: [
                     'Change the password and sign out of all sessions.',
-                    'Remove unknown devices, connected apps and — for pages and business accounts — unknown administrators. Check admins twice; that is the persistence.',
+ 'Remove unknown devices, connected apps and (for pages and business accounts) unknown administrators. Check admins twice; that is the persistence.',
                     'Check the linked email address and phone number. If either was changed, use the recovery flow to get them back first.',
                     'Post publicly, or message your closest contacts, that the account was compromised and to ignore anything it sent.',
                 ],
@@ -579,7 +579,7 @@ window.BL_PLAYS = [
                 steps: [
                     'Delete the fraudulent posts and messages, but screenshot them first.',
                     'Report the compromise through the platform’s own reporting flow.',
-                    'Warn anyone who actually sent money to check with their bank immediately — that is now their fraud, and speed matters for them too.',
+ 'Warn anyone who actually sent money to check with their bank immediately. That is now their fraud, and speed matters for them too.',
                     'Turn on a passkey or authenticator app, and remove SMS as the only factor.',
                 ],
             },
@@ -588,7 +588,7 @@ window.BL_PLAYS = [
                 kind: 'dont',
                 steps: [
                     'Do not use "account recovery" agents in your direct messages. They are queueing up specifically because you are visibly a victim.',
-                    'Do not delete the account until you have regained control — an abandoned but live account keeps working for them.',
+ 'Do not delete the account until you have regained control. An abandoned but live account keeps working for them.',
                 ],
             },
         ],
@@ -630,7 +630,7 @@ window.BL_PLAYS = [
                     'Replace SMS-based second factors with an authenticator app or a passkey wherever possible.',
                     'Add a port-out PIN or account passcode with your mobile provider so this cannot be repeated.',
                     'Check every account for changed recovery numbers.',
-                    'Report it to the police — SIM swap is usually treated as identity fraud and you will want the reference.',
+ 'Report it to the police. SIM swap is usually treated as identity fraud and you will want the reference.',
                 ],
             },
             {
@@ -667,10 +667,10 @@ window.BL_PLAYS = [
                 h: 'Do this now',
                 kind: 'first',
                 steps: [
-                    '**Freeze the card in your banking app** — most apps do this in two taps, instantly.',
+ '**Freeze the card in your banking app**: most apps do this in two taps, instantly.',
                     'Phone the bank on the number **printed on the back of the card**, not one from a message or a search result.',
                     'Say clearly: "I did not authorise these transactions and I want to report fraud." Ask for the card to be cancelled and reissued.',
-                    'Ask them to check for new payees, new devices, changed contact details and changed limits — fraud often arrives with company.',
+ 'Ask them to check for new payees, new devices, changed contact details and changed limits. Fraud often arrives with company.',
                     'Change your online banking password from a device you trust.',
                 ],
             },
@@ -689,7 +689,7 @@ window.BL_PLAYS = [
                 h: 'Expect a follow-up scam',
                 kind: 'dont',
                 steps: [
-                    'Being defrauded puts you on a list. Expect a call from "the bank’s fraud department" days later — that is a second attack.',
+ 'Being defrauded puts you on a list. Expect a call from "the bank’s fraud department" days later. That is a second attack.',
                     'A real bank will **never** ask you to move money to a "safe account", give a code, or install remote software. There are no exceptions to this.',
                     'If someone calls about the fraud, hang up and call back on the number on your card.',
                 ],
@@ -709,7 +709,7 @@ window.BL_PLAYS = [
         glyph: '➡️',
         urgency: 'critical',
         clock: 'The recall window is measured in minutes and hours. Phone the bank before you finish reading this.',
-        lede: 'This is harder to reverse than card fraud because you pressed send — but it is not hopeless, and in several countries banks are now required to reimburse victims in many circumstances. What determines the outcome, more than anything else, is how fast the receiving bank is told to freeze the account.',
+ lede: 'This is harder to reverse than card fraud because you pressed send, but it is not hopeless, and in several countries banks are now required to reimburse victims in many circumstances. What determines the outcome, more than anything else, is how fast the receiving bank is told to freeze the account.',
         signs: [
             'You transferred money after a phone call, message or online relationship.',
             'You were told to move funds to a "safe account".',
@@ -717,12 +717,12 @@ window.BL_PLAYS = [
         ],
         sections: [
             {
-                h: 'Do this now — this minute',
+ h: 'Do this now, this minute',
                 kind: 'first',
                 steps: [
                     '**Phone your bank on the number on your card** and say: "I have been the victim of an authorised push payment scam. Please attempt a recall and freeze the receiving account."',
                     'Give them the exact amount, time, sort code or IBAN, and the payee name.',
-                    'Ask them to raise it with the receiving bank immediately — that is the step that can freeze what is left.',
+ 'Ask them to raise it with the receiving bank immediately. That is the step that can freeze what is left.',
                     'Cancel any further scheduled or promised payments and remove the payee.',
                     'If you paid by card, ask for a chargeback as well; the two routes are not exclusive.',
                 ],
@@ -754,7 +754,7 @@ window.BL_PLAYS = [
                 steps: [
                     'These scams work on intelligent, careful people. They are engineered by full-time professionals using scripts refined on thousands of victims, and they specifically exploit trust, fear and time pressure.',
                     'Shame is what stops people reporting quickly, and slow reporting is what makes the loss permanent. Make the call.',
-                    'Free, confidential **victim-support services** exist in most countries and handle exactly this — the practical steps and the aftermath. Using one is not an admission of anything.',
+ 'Free, confidential **victim-support services** exist in most countries and handle exactly this: the practical steps and the aftermath. Using one is not an admission of anything.',
                 ],
             },
         ],
@@ -784,7 +784,7 @@ window.BL_PLAYS = [
                 kind: 'first',
                 steps: [
                     'If you paid **by card**: contact your card issuer and open a dispute or chargeback for goods not received. Do this even if the shop still promises delivery.',
-                    'Consider freezing or replacing the card — those details are now in the hands of people who sell them.',
+ 'Consider freezing or replacing the card. Those details are now in the hands of people who sell them.',
                     'If you paid **by bank transfer**: phone your bank immediately and ask them to attempt a recall. Chances are lower, and they fall by the hour.',
                     'If you paid **by crypto or gift card**: the money is gone. Report it, but do not pay anyone who offers to retrieve it.',
                 ],
@@ -795,7 +795,7 @@ window.BL_PLAYS = [
                 steps: [
                     'Keep everything: order confirmation, the site as it appeared (screenshot it), payment record, all correspondence.',
                     'Report the site to your national consumer protection or fraud reporting body, and to the domain registrar if you can find it.',
-                    'Check for recurring charges — fake shops frequently enrol the card in a subscription.',
+ 'Check for recurring charges: fake shops frequently enrol the card in a subscription.',
                     'Check whether you created an account there with a password you use elsewhere. If so, change it everywhere.',
                 ],
             },
@@ -823,9 +823,9 @@ window.BL_PLAYS = [
         glyph: '🎁',
         urgency: 'critical',
         clock: 'Codes are usually drained within minutes, but not always. The call to the card issuer is worth making immediately.',
-        lede: 'First, the fact that decides everything else: **no legitimate organisation accepts gift cards as payment.** Not the tax office, not Microsoft, not your bank, not the police, not your boss. Gift cards are the payment method of choice for scammers precisely because they move like cash — but "like cash" is not "always gone", so make the calls below before you write it off.',
+ lede: 'First, the fact that decides everything else: **no legitimate organisation accepts gift cards as payment.** Not the tax office, not Microsoft, not your bank, not the police, not your boss. Gift cards are the payment method of choice for scammers precisely because they move like cash, but "like cash" is not "always gone", so make the calls below before you write it off.',
         signs: [
-            'You were told to buy gift cards — Apple, Google Play, Steam, Amazon — and read the codes over the phone or send a photo of the back.',
+ 'You were told to buy gift cards (Apple, Google Play, Steam, Amazon) and read the codes over the phone or send a photo of the back.',
             'The reason was urgent and strange: a fine, a debt, "securing your account", your boss needing them "for clients".',
             'You may have been kept on the phone the whole time, including inside the shop.',
         ],
@@ -834,10 +834,10 @@ window.BL_PLAYS = [
                 h: 'Do this now',
                 kind: 'first',
                 steps: [
-                    '**Phone the gift card issuer’s fraud line right away** — Apple, Google, Steam and Amazon all have one. If the codes have not been fully spent, they can sometimes freeze the remaining balance. Minutes matter.',
+ '**Phone the gift card issuer’s fraud line right away**. Apple, Google, Steam and Amazon all have one. If the codes have not been fully spent, they can sometimes freeze the remaining balance. Minutes matter.',
                     'Have the cards and receipts in front of you: the card numbers, the activation receipts, the amounts and the time you bought them.',
-                    'Do not throw away the physical cards or receipts — they are your proof of purchase and the issuer will ask for them.',
-                    'If you bought the cards with your bank card at the till, your bank cannot recall this — but tell them anyway if the scammer also saw your screen or has your details.',
+ 'Do not throw away the physical cards or receipts. They are your proof of purchase and the issuer will ask for them.',
+ 'If you bought the cards with your bank card at the till, your bank cannot recall this, but tell them anyway if the scammer also saw your screen or has your details.',
                 ],
             },
             {
@@ -846,7 +846,7 @@ window.BL_PLAYS = [
                 steps: [
                     'Report it to the police or your national fraud reporting service and keep the reference number. Gift card fraud is under-reported, which keeps it profitable.',
                     'Write down the story while it is fresh: the number that called, the name and organisation they claimed, what they said, the shop, the amounts.',
-                    'Tell the shop where you bought them, especially if a staff member tried to warn you — retailers train for this and their report helps.',
+ 'Tell the shop where you bought them, especially if a staff member tried to warn you: retailers train for this and their report helps.',
                     'If the scam started with "your computer is infected" or someone connected to your device, work the **remote access playbook** as well.',
                 ],
             },
@@ -854,7 +854,7 @@ window.BL_PLAYS = [
                 h: 'The second wave',
                 kind: 'dont',
                 steps: [
-                    'Do not pay anyone who offers to recover the money — victims of gift card scams are re-targeted specifically because they have proven they will buy cards.',
+ 'Do not pay anyone who offers to recover the money. Victims of gift card scams are re-targeted specifically because they have proven they will buy cards.',
                     'Do not buy "one more card to unlock the refund". There is no refund behind the next card. There never was.',
                     'Do not let embarrassment stop the report. This scam is engineered by professionals and works on sharp people every single day.',
                 ],
@@ -863,9 +863,9 @@ window.BL_PLAYS = [
                 h: 'Worth knowing',
                 kind: 'note',
                 steps: [
-                    'Recovery of already-spent codes is rare — the issuer call is about whatever balance is left, and about flagging the account that redeemed them.',
+ 'Recovery of already-spent codes is rare. The issuer call is about whatever balance is left, and about flagging the account that redeemed them.',
                     'The "boss needs gift cards" version arrives by email or text at work, usually from a lookalike address. One phone call to the real boss on their real number ends it.',
-                    'If this targeted an older relative, they were not careless — they were selected. The **protecting elders** guide has the conversation worth having.',
+ 'If this targeted an older relative, they were not careless. They were selected. The **protecting elders** guide has the conversation worth having.',
                 ],
             },
         ],
@@ -883,7 +883,7 @@ window.BL_PLAYS = [
         glyph: '🧾',
         urgency: 'critical',
         clock: 'Recall attempts work best in the first hours. Both banks need to be told today.',
-        lede: 'Invoice fraud is quiet and expensive. Either your supplier’s mailbox was compromised, or yours was, or someone in between intercepted the thread. The money went out through your legitimate process, which is why nothing flagged it — and why the response has to include finding out whose mailbox was open.',
+ lede: 'Invoice fraud is quiet and expensive. Either your supplier’s mailbox was compromised, or yours was, or someone in between intercepted the thread. The money went out through your legitimate process, which is why nothing flagged it, and why the response has to include finding out whose mailbox was open.',
         signs: [
             'A supplier says they never received payment.',
             'An invoice arrived with new bank details, often "due to an audit" or a "new finance system".',
@@ -895,7 +895,7 @@ window.BL_PLAYS = [
                 kind: 'first',
                 steps: [
                     'Phone your bank and request an immediate recall, giving the exact amount, time and beneficiary details.',
-                    'Phone the real supplier on a number **you already had** — not one from any recent email — and tell them. Their mailbox may be the compromised one, and other customers are being defrauded right now.',
+ 'Phone the real supplier on a number **you already had** (not one from any recent email) and tell them. Their mailbox may be the compromised one, and other customers are being defrauded right now.',
                     'Stop every other pending payment to that supplier until verified by voice.',
                     'If you are at work, tell your manager and your IT or security team immediately. This is now an incident, not just a payment error.',
                 ],
@@ -904,11 +904,11 @@ window.BL_PLAYS = [
                 h: 'Then, today',
                 kind: 'do',
                 steps: [
-                    'Preserve the emails **with full headers**. Do not delete, do not forward as a summary — headers are the evidence.',
+ 'Preserve the emails **with full headers**. Do not delete, do not forward as a summary. Headers are the evidence.',
                     'Check your own mailbox for forwarding rules and unfamiliar sign-ins. If the interception was on your side, it is still running.',
                     'Compare the fraudulent invoice with a genuine one. Note the differences in writing.',
                     'Report to the police or national fraud service; you will need the reference for insurance.',
-                    'Notify your insurer if you hold cyber or crime cover — many policies have short notification windows.',
+ 'Notify your insurer if you hold cyber or crime cover. Many policies have short notification windows.',
                 ],
             },
             {
@@ -949,7 +949,7 @@ window.BL_PLAYS = [
                     '**Send nothing more.** No fee ever releases the funds. There is always another fee; that is the design.',
                     'Do not tell them you have realised. Screenshot everything first: profiles, chats, the platform balance, wallet addresses, transaction IDs, phone numbers.',
                     'Phone your bank, report it, and ask them to attempt recall on recent transfers and block further ones to those accounts.',
-                    'If you sent cryptocurrency, record every transaction hash and receiving address. Report to the exchange you sent from — occasionally funds are frozen at an exchange.',
+ 'If you sent cryptocurrency, record every transaction hash and receiving address. Report to the exchange you sent from, occasionally funds are frozen at an exchange.',
                     'Remove any app or remote-access tool they had you install, and change the passwords on anything they could see.',
                 ],
             },
@@ -959,7 +959,7 @@ window.BL_PLAYS = [
                 steps: [
                     'Report to the police and the national fraud service. Keep the reference.',
                     'Report the profile to the platform where you met, so the account can be taken down before the next person.',
-                    'If you borrowed money or used credit, tell the lender you were defrauded — some have hardship processes.',
+ 'If you borrowed money or used credit, tell the lender you were defrauded. Some have hardship processes.',
                     'Tell one person you trust. Isolation is part of how the scam sustains itself, and it does not end when the payments do.',
                     'Consider a victim support service. In many countries these are free, confidential and used to exactly this.',
                 ],
@@ -988,7 +988,7 @@ window.BL_PLAYS = [
         glyph: '🚫',
         urgency: 'high',
         clock: 'Do not let the countdown in the message set your pace. It is a pressure tactic, not a real deadline.',
-        lede: 'First, plainly: this is a crime committed against you, and it is not your fault. Second, most of these messages are bluffs sent to thousands of people at once. Third, even when the images are real, paying has never ended it — it marks you as someone who pays. Here is how to tell the two apart and what to do about each.',
+ lede: 'First, plainly: this is a crime committed against you, and it is not your fault. Second, most of these messages are bluffs sent to thousands of people at once. Third, even when the images are real, paying has never ended it: it marks you as someone who pays. Here is how to tell the two apart and what to do about each.',
         signs: [
             '**Likely a bluff:** a mass email quoting an old password from a breach, claiming webcam footage, demanding cryptocurrency, with a 24 or 48 hour deadline and no actual image.',
             '**Likely real:** a conversation on a dating app, social platform or game that moved quickly to video or images, followed by immediate threats naming your actual contacts.',
@@ -1000,7 +1000,7 @@ window.BL_PLAYS = [
                 steps: [
                     'There is no footage. These are sent by the million using addresses and old passwords from public breaches.',
                     'Do not reply and do not pay. Delete it and mark it as spam.',
-                    'If a real password of yours was quoted, change it wherever it is still used — that part is genuine information, from an old breach.',
+ 'If a real password of yours was quoted, change it wherever it is still used. That part is genuine information, from an old breach.',
                     'Cover your webcam if it makes you feel better. It is not why this email arrived.',
                 ],
             },
@@ -1011,10 +1011,10 @@ window.BL_PLAYS = [
                     '**Stop replying.** Every reply gives them more leverage and more information.',
                     '**Do not pay.** Payment has never ended a case; it reliably produces a second demand.',
                     'Screenshot everything before blocking: profiles, usernames, messages, payment addresses, any image they sent.',
-                    'Block the account, and report it to the platform — most have a specific sextortion route that acts fast.',
+ 'Block the account, and report it to the platform. Most have a specific sextortion route that acts fast.',
                     'Lock down your social accounts: set them private, restrict your follower and friend lists, and remove public contact details. The threat to send to your contacts depends on them being visible.',
                     'Tell someone. One person. It is unbearable alone and entirely survivable shared.',
-                    'If the pressure ever feels like more than you can carry, contact a **crisis helpline** — nearly every country has one, by phone or chat, around the clock. People have been where you are and come out the other side. This will pass; make sure you are there for it.',
+ 'If the pressure ever feels like more than you can carry, contact a **crisis helpline**. Nearly every country has one, by phone or chat, around the clock. People have been where you are and come out the other side. This will pass; make sure you are there for it.',
                 ],
             },
             {
@@ -1022,7 +1022,7 @@ window.BL_PLAYS = [
                 kind: 'do',
                 steps: [
                     'Report to the police. This is a crime in essentially every jurisdiction, and it is treated seriously.',
-                    'Use an image-takedown service — StopNCII for adults, and your country’s child-protection hotline if anyone involved is under 18.',
+ 'Use an image-takedown service: StopNCII for adults, and your country’s child-protection hotline if anyone involved is under 18.',
                     'If the person involved is a minor, contact a child-exploitation reporting line immediately. There are dedicated, fast routes for this and they work.',
                     'If images do get posted, request removal from the platform and from search engines; there are legal takedown routes in most countries.',
                 ],
@@ -1031,15 +1031,167 @@ window.BL_PLAYS = [
                 h: 'For parents',
                 kind: 'note',
                 steps: [
-                    'Teen sextortion escalates within hours and the criminals rely entirely on shame. The single most protective thing you can do is say, in advance, "if anything goes wrong online you can tell me and you will not be in trouble" — and mean it.',
+ 'Teen sextortion escalates within hours and the criminals rely entirely on shame. The single most protective thing you can do is say, in advance, "if anything goes wrong online you can tell me and you will not be in trouble", and mean it.',
                     'A young person who tells an adult in the first hour almost always comes out of it. One who does not, does not.',
                 ],
             },
         ],
         terms: ['sextortion', 'data-breach', 'doxxing'],
         defend: ['protect-kids', 'password-hygiene'],
-        plays: ['breach-notice', 'child-incident'],
+        plays: ['threat-at-home', 'breach-notice', 'child-incident'],
         keys: 'sextortion blackmail nude photos threatening to send my photos webcam blackmail email bitcoin blackmail they have my password intimate images',
+    },
+
+    {
+        id: 'threat-at-home',
+        aud: 'user',
+        cat: 'people',
+        title: 'They know my address and say someone is coming',
+        glyph: '🚪',
+        urgency: 'high',
+        clock: 'Nothing here needs a payment in the next ten minutes. If anyone is actually at your door, that is a 112 / 999 / 911 call, not a payment.',
+        lede: 'Being told that someone will come to your home is the most frightening thing these people do, and it is chosen for exactly that reason. Two things are true at once, and both matter. Almost all of these threats are pure intimidation and nothing ever happens. And a small number of scams genuinely do send a person to the door, usually to collect a card or cash. So the answer is not "ignore it" and it is not "pay". It is: hand over nothing, and tell your own police so they know.',
+        signs: [
+            'A caller or message quotes your home address, and often your name, employer or family names, to prove they are serious.',
+            'A threat to "send someone round", to visit your workplace, or to tell your neighbours and family.',
+            'A demand for payment, gift cards or cryptocurrency to make it stop.',
+            'Or the opposite shape: a very polite instruction that a courier, a "police officer" or "someone from the bank" will call at your home to collect your card, your cash or your jewellery for safekeeping.',
+        ],
+        sections: [
+            {
+                h: 'Right now',
+                kind: 'first',
+                steps: [
+                    'If somebody is at your door or outside your home **now**, call your emergency number. That is what it is for, and this is a good reason to use it.',
+                    'Do not pay. Payment does not end a threat, it confirms that threats work on you, and it is followed by another demand.',
+                    'Stop replying. Every reply tells them the pressure is landing, which is the only feedback they get.',
+                    '**Hand nothing to anyone at your door.** No real bank, police force or courier will ever come to collect your card, your PIN, your cash or your jewellery. Not one, anywhere, ever. If someone arrives saying they will, do not open the door, and call the police on a number you looked up yourself.',
+                    'Screenshot everything before you block: the number, the profile, the messages, any payment address. That is the evidence.',
+                ],
+            },
+            {
+                h: 'Tell your own police, even if nothing has happened yet',
+                kind: 'do',
+                steps: [
+                    'Report it to your **local** police, on their non-emergency line or in person, not just to a national fraud website. The national report handles the fraud; the local report is what puts your address on their screen.',
+                    'Say plainly: *"I am being threatened with a visit to my home. Nobody has come yet. I want it on record in case they do."* You are allowed to report a threat that has not happened yet.',
+                    'Ask two specific things: whether they can note the address so a call from you is prioritised, and whether extra passing attention in the street is possible. In many places both are ordinary requests, and neither costs you anything.',
+                    'Ask for the report or reference number and keep it. If anything does happen later, that number turns "a stranger at the door" into "the incident we already told you about".',
+                    'If the threat mentions your workplace, tell your workplace security or your manager as well, for the same reason.',
+                ],
+            },
+            {
+                h: 'Then, calmly',
+                kind: 'do',
+                steps: [
+                    'Tell one person you trust and who lives nearby. Isolation is the thing the threat depends on, and it is the easiest part to remove.',
+                    'Work out how they got your address. A data breach, a public register, a delivery, an old marketplace listing or your own social media are the usual answers, and none of them mean you are being watched.',
+                    'Tighten what is public: social profiles to private, remove your address and photos of your street or house number, and check what a search of your own name returns.',
+                    'If money already moved, the money playbooks run in parallel and they have the tighter deadline.',
+                    'If the threat involves intimate images, the sextortion playbook has the takedown routes.',
+                ],
+            },
+            {
+                h: 'Do not',
+                kind: 'dont',
+                steps: [
+                    'Do not go to meet them, and do not invite them to "sort it out". There is nothing to sort out.',
+                    'Do not pay "just this once to make it stop". Victim lists are traded, and paying moves you to the list of people who pay.',
+                    'Do not post about it publicly while it is happening. It gives them a reaction and it can give them more detail about you.',
+                    'Do not move house, quit a job or change your number in the first panicked hour. Report first, then decide anything permanent when the fear has come down.',
+                ],
+            },
+            {
+                h: 'Why this works on sensible people',
+                kind: 'note',
+                steps: [
+                    'Knowing your address feels like proof that they are close and organised. It is usually a line copied from a leaked database, bought for very little, and pasted into a script that goes to thousands of people.',
+                    'The script is written to make you feel watched, alone and out of time. Reporting it to your local police removes all three: somebody official now knows, you are not alone with it, and there is no deadline on a police report.',
+                    'None of this is your fault, and none of it is made worse by telling someone. It is only made worse by silence.',
+                ],
+            },
+        ],
+        terms: ['sextortion', 'social-engineering', 'doxxing', 'data-breach'],
+        defend: ['identity-armour', 'protect-elders', 'verify-a-human'],
+        plays: ['sextortion-threat', 'money-transfer', 'identity-theft', 'tracker-alert'],
+        keys: 'they know my address threatening to come to my house send someone round scared for my safety threatened at home courier coming to collect my card police will visit blackmail threat visit should i call the police neighbourhood patrol',
+    },
+
+    {
+        id: 'tracker-alert',
+        aud: 'user',
+        cat: 'people',
+        title: 'My phone says an unknown tracker is moving with me',
+        glyph: '📍',
+        urgency: 'high',
+        clock: 'Take the time to be safe rather than fast. The one thing not to do is remove it in a hurry if someone might be watching for that.',
+        lede: 'Your phone told you that an unknown AirTag, Tile or similar tag has been travelling with you. That alert exists because phones now watch for this, and it is working. Most alerts turn out to be harmless: a borrowed item, a family tag, a shared car, a hire vehicle. But some are not, and because you cannot tell which from the notification alone, this is worth treating as an incident. **Read the safety point below before you go looking for the tag.**',
+        signs: [
+            'An iPhone alert such as "AirTag Found Moving With You", or an Android "Unknown tracker detected" or "Unknown tracker travelling with you" notification.',
+            'The same alert appearing more than once, in different places, over hours or days.',
+            'Someone consistently knowing where you have been, especially an ex-partner, a former housemate or someone you have recently cut contact with.',
+            'A tag you cannot find anywhere in your bag or on your person, which often means it is on or in the vehicle.',
+        ],
+        sections: [
+            {
+                h: 'Before you go looking for it',
+                kind: 'first',
+                steps: [
+                    '**If someone might be dangerous to you, do not disable or throw away the tag yet.** The moment it stops moving or goes silent, whoever placed it knows you found it. For a stalker or an abusive ex, that is often the moment things escalate. Same rule as stalkerware.',
+                    'If you feel unsafe right now, go somewhere with other people around and phone the police or a domestic-abuse support line before touching anything.',
+                    'If you are confident there is no danger, carry on to the steps below and just find the thing.',
+                    'Either way: **do not drive home** while you believe an active tracker is with you, if home is somewhere you would rather they did not learn.',
+                ],
+            },
+            {
+                h: 'Find it, without destroying the evidence',
+                kind: 'do',
+                steps: [
+                    'Use the alert itself. Tap it: iPhone offers to play a sound on the tag and to show where it has been travelling with you. Android has the same under Settings, Safety and emergency, Unknown tracker alerts, where you can also run a manual scan.',
+                    'An iPhone can also read the tag with NFC by holding the top of the phone against it, which shows the serial number and often the last digits of the owner\u2019s phone number. **Photograph that screen.** It identifies the owner and the police can request the rest.',
+                    'Search in this order: bag linings and side pockets, coat pockets and hoods, pram or wheelchair frames, luggage, and anything recently given to you as a gift.',
+                    'For a vehicle: wheel arches, under the bumpers, the tow bar, the roof lining of the boot, the spare-wheel well, and inside the OBD port under the dashboard. A magnetic box under a wheel arch is the classic.',
+                    'When you find it, **photograph it in place before you move it**, then photograph the front, the back and any serial number.',
+                    'Do not smash it, wipe it or bin it. It is the single most identifying piece of evidence in the whole situation.',
+                ],
+            },
+            {
+                h: 'Report it to the police, and let them keep it',
+                kind: 'do',
+                steps: [
+                    'Report it to your local police. Being tracked without consent is an offence in most countries, and this is exactly the kind of report they are able to act on, because a tag has an owner and a serial number.',
+                    'Hand the tag to them rather than keeping it. Officers can send it for **specialist examination**, and a manufacturer can usually link a serial number to an account. That is a route you have no access to on your own.',
+                    'Tell them where it was found, when the alerts started, and who you suspect and why. Give them your photographs and the serial number.',
+                    'Ask them to note your address, in the same way as any other threat at home. If they are aware, a later call from you starts much further along.',
+                    'If it was on a vehicle and you cannot find it, ask them how to proceed. In many cases the practical answer is to have a **garage or a vehicle specialist put it on a ramp and sweep it properly**, which finds hard-wired trackers that a hand search never will. Keep the invoice.',
+                    'Get a reference number. If a pattern develops, that number is what connects the incidents.',
+                ],
+            },
+            {
+                h: 'Scanning for yourself',
+                kind: 'note',
+                steps: [
+                    'Your phone only alerts on tags that follow the industry standard and are separated from their owner. A cheap no-brand tracker or a wired vehicle tracker may never trigger it.',
+                    'A Bluetooth scanner shows you what is actually broadcasting around you, which is the honest picture. **GhostTooth** is a free one built by the same workshop as this site: it lists nearby Bluetooth devices and helps you spot the one that follows you between locations. It is at `ghosttooth.labidi.eu`.',
+                    'The method that beats any app: note what you see in two completely different places, hours apart. A device present in both, when nothing else is, is your candidate.',
+                    'Hardwired vehicle trackers often do not broadcast at all. That is the case where a physical sweep on a ramp is the only reliable answer.',
+                ],
+            },
+            {
+                h: 'Also check the software side',
+                kind: 'do',
+                steps: [
+                    'A physical tag is one way to follow someone. Phone-based location sharing is the more common one and costs nothing.',
+                    'Check who you are sharing location with: Find My on iPhone, Find Hub or Google Maps location sharing on Android, and the sharing settings in WhatsApp, Snapchat and your family apps.',
+                    'Check your car maker\u2019s app for anyone still linked to the vehicle, especially after a separation or a private sale.',
+                    'If a partner or ex has had physical access to your phone, work the stalkerware guidance too, and read the safety warning there first.',
+                ],
+            },
+        ],
+        terms: ['stalkerware', 'doxxing', 'social-engineering'],
+        defend: ['phone-lock', 'identity-armour', 'protect-elders'],
+        plays: ['threat-at-home', 'phone-malware', 'lost-device'],
+        keys: 'unknown tracker detected airtag found moving with you tile tracker following me someone tracking my car hidden gps tracker under car being stalked tracker alert on my phone how to find a tracker report tracker police ghosttooth bluetooth scan',
     },
 
     {
@@ -1061,7 +1213,7 @@ window.BL_PLAYS = [
                 h: 'Do this now',
                 kind: 'first',
                 steps: [
-                    '**Disconnect from the internet** — Wi-Fi off, cable out. This ends the session immediately.',
+ '**Disconnect from the internet**: Wi-Fi off, cable out. This ends the session immediately.',
                     'Phone your bank on the number on your card. Tell them a fraudster had remote access. Ask them to check for new payees, pending payments, changed limits and new device registrations.',
                     'Get a **different, clean device** for everything below.',
                     'From the clean device: change your email password, then your bank, then everything important. Sign out of all sessions on each one.',
@@ -1071,7 +1223,7 @@ window.BL_PLAYS = [
                 h: 'Then, today',
                 kind: 'do',
                 steps: [
-                    'Uninstall the remote-access tool, but do not assume that is the end of it — they had time to install other things.',
+ 'Uninstall the remote-access tool, but do not assume that is the end of it. They had time to install other things.',
                     'Check for new user accounts on the computer, new scheduled tasks and new startup programs.',
                     'Check your email account for forwarding rules and new recovery details.',
                     'Check the browser for new extensions and a changed home page or search engine.',
@@ -1083,7 +1235,7 @@ window.BL_PLAYS = [
                 h: 'If they showed you "evidence"',
                 kind: 'note',
                 steps: [
-                    'The Event Viewer full of red errors, the netstat output "showing hackers", the syskey lock screen, the fake refund that appears to overpay you — these are standard theatre in every tech-support scam script.',
+ 'The Event Viewer full of red errors, the netstat output "showing hackers", the syskey lock screen, the fake refund that appears to overpay you. These are standard theatre in every tech-support scam script.',
                     'The "you have been refunded €10,000 by mistake, please send €9,500 back" routine is an edited web page or a transfer from another victim’s account. Nothing was refunded.',
                 ],
             },
@@ -1115,7 +1267,7 @@ window.BL_PLAYS = [
                 kind: 'first',
                 steps: [
                     'Disconnect the affected device from the network.',
-                    'Get a **clean device**. Every password change below must be made from it — not from the infected machine.',
+ 'Get a **clean device**. Every password change below must be made from it, not from the infected machine.',
                     'Change email first. Then password manager. Then bank. Then everything else, in order of what hurts most.',
                     '**Sign out of all sessions** on each account as you go. The stolen cookies are the real damage and they ignore your new password entirely.',
                     'Move any cryptocurrency to a new wallet with keys generated on the clean device.',
@@ -1128,8 +1280,8 @@ window.BL_PLAYS = [
                     'Check registered MFA methods, recovery addresses and connected apps on every important account.',
                     'Check email forwarding rules.',
                     'Tell your bank so they can monitor, and consider a new card.',
-                    'If it was a work device, tell security immediately — corporate VPN and SSO credentials are exactly what these are harvested for.',
-                    '**Reinstall the operating system.** Copy off documents only. Do not restore programs or browser profiles. A repair shop you choose yourself can do this part for you — the password changes above, though, cannot wait for the appointment.',
+ 'If it was a work device, tell security immediately. Corporate VPN and SSO credentials are exactly what these are harvested for.',
+ '**Reinstall the operating system.** Copy off documents only. Do not restore programs or browser profiles. A repair shop you choose yourself can do this part for you. The password changes above, though, cannot wait for the appointment.',
                     'Afterwards, stop letting the browser store passwords. Use a dedicated manager with its own lock.',
                 ],
             },
@@ -1138,7 +1290,7 @@ window.BL_PLAYS = [
                 kind: 'dont',
                 steps: [
                     'Do not change passwords on the infected machine.',
-                    'Do not conclude that a clean antivirus scan means nothing happened — self-deletion is a standard feature.',
+ 'Do not conclude that a clean antivirus scan means nothing happened. Self-deletion is a standard feature.',
                     'Do not reuse the machine for anything sensitive before it is rebuilt.',
                 ],
             },
@@ -1157,7 +1309,7 @@ window.BL_PLAYS = [
         glyph: '🦠',
         urgency: 'high',
         clock: 'Sort out which problem you actually have first. Two of the loudest "infections" are not infections at all.',
-        lede: 'Slow, hot, full of ads, acting strangely — this playbook sorts the possibilities from loudest to quietest. Several of them are not malware, one of them is malware that does not matter much, and one means your passwords are already gone. Which one you have decides everything, so start with the sorting step, not the scanning step.',
+ lede: 'Slow, hot, full of ads, acting strangely: this playbook sorts the possibilities from loudest to quietest. Several of them are not malware, one of them is malware that does not matter much, and one means your passwords are already gone. Which one you have decides everything, so start with the sorting step, not the scanning step.',
         signs: [
             'Ads or pop-ups appear out of nowhere, or your search engine and homepage changed by themselves.',
             'The machine is suddenly slow, the fans roar at idle, or the disk is constantly busy.',
@@ -1166,13 +1318,13 @@ window.BL_PLAYS = [
         ],
         sections: [
             {
-                h: 'First — which problem is this?',
+ h: 'First. Which problem is this?',
                 kind: 'first',
                 steps: [
                     'Files renamed, will not open, and a note demanding payment → stop here and open **My files are encrypted** instead. Disconnect from the network first.',
                     'The cursor moved by itself, or you let "support" connect recently → open **I let someone connect to my computer remotely**.',
                     'You ran a crack, a cheat, a "codec", or pasted a command a website gave you → open **I think something stole my saved passwords**. That one is about your accounts, not your machine, and it is time-critical.',
-                    'A full-screen warning with a siren and a phone number → that is **scareware**, a web page. Close the browser (hold Esc if it fights you). Your computer is very probably fine — never call the number.',
+ 'A full-screen warning with a siren and a phone number → that is **scareware**, a web page. Close the browser (hold Esc if it fights you). Your computer is very probably fine, never call the number.',
                     'None of those → keep reading. What is left is usually adware, an unwanted extension, or nothing at all.',
                 ],
             },
@@ -1190,7 +1342,7 @@ window.BL_PLAYS = [
                 kind: 'do',
                 steps: [
                     'Browser extensions: remove everything you do not actively use, not just the obviously bad one. Extensions are the main way search engines get hijacked and ads get injected.',
-                    'Put your search engine and homepage back in the browser settings — malware sets them, but so do "free" installers.',
+ 'Put your search engine and homepage back in the browser settings. Malware sets them, but so do "free" installers.',
                     'Uninstall unknown programs: Windows Settings → Apps, sorted by install date, is the honest list. On a Mac, check Applications and System Settings → General → Login Items.',
                     'Restart afterwards. It costs nothing and finishes pending updates.',
                 ],
@@ -1201,18 +1353,18 @@ window.BL_PLAYS = [
                 steps: [
                     'Run a **full** scan (not the quick one) with the security software already on the machine. Windows ships with Microsoft Defender; it is genuinely decent.',
                     'On Windows, follow with the offline scan (Windows Security → Virus & threat protection → Scan options → **Microsoft Defender Antivirus (offline scan)**). It reboots and scans before malware can hide, which is the point.',
-                    '**Do not install a scanner you found through an ad or a pop-up.** Fake antivirus is itself a classic infection route — and one paid "cleaner" subscription is the usual souvenir.',
-                    'If the scan finds a stealer, a trojan or a RAT — not just adware or "potentially unwanted programs" — treat it as **I think something stole my saved passwords** from this point on.',
+ '**Do not install a scanner you found through an ad or a pop-up.** Fake antivirus is itself a classic infection route, and one paid "cleaner" subscription is the usual souvenir.',
+ 'If the scan finds a stealer, a trojan or a RAT (not just adware or "potentially unwanted programs") treat it as **I think something stole my saved passwords** from this point on.',
                 ],
             },
             {
                 h: 'When to stop cleaning and start over',
                 kind: 'note',
                 steps: [
-                    'Cleaning tools remove what they recognise; they cannot prove nothing remains. If anything genuinely hostile ran — or you cannot shake the doubt — the honest fix is a **reinstall**: copy documents off, reinstall the OS, restore files only, never programs.',
+ 'Cleaning tools remove what they recognise; they cannot prove nothing remains. If anything genuinely hostile ran (or you cannot shake the doubt) the honest fix is a **reinstall**: copy documents off, reinstall the OS, restore files only, never programs.',
                     'Adware and a hijacked search engine, on the other hand, are annoying rather than catastrophic. Cleaned up is cleaned up; no reinstall required.',
-                    '**Not confident doing a reinstall? That is what a local repair shop is for.** One you walk into yourself — never one whose number came from a pop-up or a cold call. Tell them what happened, ask for “wipe and reinstall, keep my files”, and change your important passwords afterwards regardless.',
-                    'If this is a work machine, hand it to IT instead of cleaning it yourself — what looks like adware to you may be evidence to them.',
+ '**Not confident doing a reinstall? That is what a local repair shop is for.** One you walk into yourself, never one whose number came from a pop-up or a cold call. Tell them what happened, ask for “wipe and reinstall, keep my files”, and change your important passwords afterwards regardless.',
+ 'If this is a work machine, hand it to IT instead of cleaning it yourself. What looks like adware to you may be evidence to them.',
                 ],
             },
             {
@@ -1220,7 +1372,7 @@ window.BL_PLAYS = [
                 kind: 'dont',
                 steps: [
                     'Do not pay for a "tune-up" tool, "driver updater" or "PC cleaner". At best they are placebo; at worst they are the malware.',
-                    'Do not run two antivirus products at once — they fight each other and slow the machine into the exact symptom you started with.',
+ 'Do not run two antivirus products at once: they fight each other and slow the machine into the exact symptom you started with.',
                     'Do not phone any number a warning shows you. Real security software does not have a hotline in its alerts.',
                 ],
             },
@@ -1239,7 +1391,7 @@ window.BL_PLAYS = [
         glyph: '📵',
         urgency: 'high',
         clock: 'If your bank or codes run through this phone, sort it today. Everything else can be done calmly.',
-        lede: 'Phones get compromised differently from computers, and most "your phone is infected!" alarms are spam designed to sell you a fake cleaner. This playbook separates the noise from the two real problems — a hostile app, and someone watching the device — for both Android and iPhone or iPad.',
+ lede: 'Phones get compromised differently from computers, and most "your phone is infected!" alarms are spam designed to sell you a fake cleaner. This playbook separates the noise from the two real problems (a hostile app, and someone watching the device) for both Android and iPhone or iPad.',
         signs: [
             '"Virus detected" warnings or a flood of strange notifications.',
             'An app you do not remember installing, or one that refuses to uninstall.',
@@ -1249,7 +1401,7 @@ window.BL_PLAYS = [
         ],
         sections: [
             {
-                h: 'First — which problem is this?',
+ h: 'First. Which problem is this?',
                 kind: 'first',
                 steps: [
                     'Pop-ups saying the phone is infected, with a button to "clean" it → **the pop-up is the scam**, not a diagnosis. A web page cannot scan your phone. Follow the notification clean-up below and stop worrying.',
@@ -1265,19 +1417,19 @@ window.BL_PLAYS = [
                 steps: [
                     'Android: Chrome → ⋮ → Settings → Notifications (or Site settings → Notifications) → remove every site you do not recognise. Those sites tricked you into tapping Allow once, and have shouted ever since.',
                     'iPhone or iPad: Settings → Notifications → look for Safari-delivered noise, and Settings → Safari → Clear History and Website Data if pop-ups persist.',
-                    'iPhone "virus" events filling your agenda are **calendar spam**: Settings → Calendar → Accounts → delete the subscribed calendar you never added. Not an infection — a subscription.',
-                    'After the clean-up, the "infection" is usually gone, because it was never in the phone — only in the browser’s permissions.',
+ 'iPhone "virus" events filling your agenda are **calendar spam**: Settings → Calendar → Accounts → delete the subscribed calendar you never added. Not an infection: a subscription.',
+ 'After the clean-up, the "infection" is usually gone, because it was never in the phone, only in the browser’s permissions.',
                 ],
             },
             {
                 h: 'On Android',
                 kind: 'do',
                 steps: [
-                    'Run the built-in scan: Play Store → your profile picture → **Play Protect** → Scan. If anything ever asked you to *disable* Play Protect, treat that app as hostile — no honest app asks.',
+ 'Run the built-in scan: Play Store → your profile picture → **Play Protect** → Scan. If anything ever asked you to *disable* Play Protect, treat that app as hostile: no honest app asks.',
                     'Review what came from outside the store: Settings → Apps → look for anything you sideloaded from a link. "Update" APKs sent by chat or SMS are the main way banking trojans arrive.',
                     'Check **Accessibility** (Settings → Accessibility): any app you do not recognise with full control of the screen is exactly how banking malware reads and taps for itself. Remove its access, then the app.',
                     'Check **device admin apps** (Settings → Security → Device admin apps, wording varies): a rogue entry here is why an app refuses to uninstall. Deactivate it, then uninstall.',
-                    'If an app still will not die, reboot into **safe mode** (press and hold the on-screen Power off option until “Reboot to safe mode” appears) — third-party apps stay disabled there, and uninstalling works.',
+ 'If an app still will not die, reboot into **safe mode** (press and hold the on-screen Power off option until “Reboot to safe mode” appears): third-party apps stay disabled there, and uninstalling works.',
                     'Settings → Battery and Settings → Network → data usage, sorted by app, name the resource thief directly.',
                 ],
             },
@@ -1287,8 +1439,8 @@ window.BL_PLAYS = [
                 steps: [
                     'Classic self-installing viruses are, in practice, not a thing on an un-jailbroken iPhone. What exists instead: hostile **configuration profiles**, subscription traps, and stalkerware via your Apple ID.',
                     'Settings → General → **VPN & Device Management**: any profile you did not knowingly install (and that is not your employer’s) gets deleted. "Install this profile to watch free TV" scams live here.',
-                    'Settings → your name → **Subscriptions**: cancel anything you do not recognise — "fleeceware" apps charge weekly for a flashlight and count on you never looking.',
-                    'Settings → your name → list of devices: remove any device you do not own. On an iPhone, **Safety Check** (Settings → Privacy & Security) reviews a specific person’s access — it does not exist on iPad, where you review sharing per app instead.',
+ 'Settings → your name → **Subscriptions**: cancel anything you do not recognise: "fleeceware" apps charge weekly for a flashlight and count on you never looking.',
+ 'Settings → your name → list of devices: remove any device you do not own. On an iPhone, **Safety Check** (Settings → Privacy & Security) reviews a specific person’s access. It does not exist on iPad, where you review sharing per app instead.',
                     'Update iOS (Settings → General → Software Update). The rare genuinely serious iPhone attacks are fixed by exactly these updates, which is why they matter the week they appear.',
                 ],
             },
@@ -1305,11 +1457,11 @@ window.BL_PLAYS = [
                 h: 'The reset, done right',
                 kind: 'note',
                 steps: [
-                    'A **factory reset removes phone malware** in essentially all real-world cases — it is the clean answer when doubt remains.',
-                    'Set up as new, or restore only photos, contacts and messages from the cloud. **Do not restore a full app backup** — restoring everything can restore the problem.',
+ 'A **factory reset removes phone malware** in essentially all real-world cases. It is the clean answer when doubt remains.',
+ 'Set up as new, or restore only photos, contacts and messages from the cloud. **Do not restore a full app backup**. Restoring everything can restore the problem.',
                     'Sign in with your own accounts afterwards and change their passwords at that point, so the new passwords never touched the old install.',
-                    'Rather not do this alone? Your **carrier’s shop or the manufacturer’s service desk** (Apple, Samsung and the rest all have one) will walk through backup, reset and restore with you for little or nothing — go to one you chose, never one a pop-up or caller recommended.',
-                    'A work-managed phone or tablet is IT’s problem to rebuild, not yours — hand it over instead of resetting the evidence away.',
+ 'Rather not do this alone? Your **carrier’s shop or the manufacturer’s service desk** (Apple, Samsung and the rest all have one) will walk through backup, reset and restore with you for little or nothing. Go to one you chose, never one a pop-up or caller recommended.',
+ 'A work-managed phone or tablet is IT’s problem to rebuild, not yours. Hand it over instead of resetting the evidence away.',
                 ],
             },
             {
@@ -1317,7 +1469,7 @@ window.BL_PLAYS = [
                 kind: 'dont',
                 steps: [
                     'Do not install an antivirus, "cleaner", "booster" or VPN that a pop-up or ad told you to install. On phones, fake security apps vastly outnumber real infections.',
-                    'Do not jailbreak or root the device to "inspect" it — that removes the protections that were doing most of the work.',
+ 'Do not jailbreak or root the device to "inspect" it. That removes the protections that were doing most of the work.',
                     'Do not enter your Apple ID or Google password into anything that is not the Settings app or the account’s own site, whatever the pop-up claims.',
                 ],
             },
@@ -1348,7 +1500,7 @@ window.BL_PLAYS = [
                 kind: 'first',
                 steps: [
                     '**Disconnect from the network and unplug external drives.** Do this before anything else.',
-                    'Do not power the machine off if you might want it investigated — isolation preserves more.',
+ 'Do not power the machine off if you might want it investigated: isolation preserves more.',
                     'Check other devices in the house or office. Ransomware travels along shares.',
                     'Photograph the ransom note and one encrypted filename with your phone. You will need them to identify the family.',
                 ],
@@ -1357,7 +1509,7 @@ window.BL_PLAYS = [
                 h: 'Then',
                 kind: 'do',
                 steps: [
-                    'Check the No More Ransom project — a free decryptor exists for a meaningful number of families.',
+ 'Check the No More Ransom project. A free decryptor exists for a meaningful number of families.',
                     'Check whether your backup is genuinely intact, and specifically whether it was connected when this started.',
                     'Check cloud storage version history. Sync services often let you roll back to before the encryption.',
                     'Report to the police. Free decryption keys are sometimes released after a takedown, months later.',
@@ -1370,7 +1522,7 @@ window.BL_PLAYS = [
                 steps: [
                     'Roughly a third of those who pay never get usable data back, decryptors are often slow and buggy, and paying funds the next attack.',
                     'Modern crews also steal data before encrypting and then demand a second payment not to publish it. Paying the first demand does not remove that.',
-                    'If the files genuinely matter, a **data-recovery or incident-response firm you find yourself** can be worth it — but ask one question in writing first: *“do you decrypt, or do you negotiate with and pay the attackers?”* Firms “guaranteeing” decryption have been caught quietly paying the ransom and billing it back with a margin.',
+ 'If the files genuinely matter, a **data-recovery or incident-response firm you find yourself** can be worth it, but ask one question in writing first: *“do you decrypt, or do you negotiate with and pay the attackers?”* Firms “guaranteeing” decryption have been caught quietly paying the ransom and billing it back with a margin.',
                     'If this is a business, involve your insurer and legal counsel before any decision. There may be sanctions implications in paying at all.',
                 ],
             },
@@ -1378,7 +1530,7 @@ window.BL_PLAYS = [
                 h: 'Do not',
                 kind: 'dont',
                 steps: [
-                    'Do not delete the encrypted files. Keep them — a decryptor may be released later.',
+ 'Do not delete the encrypted files. Keep them. A decryptor may be released later.',
                     'Do not run random "ransomware removal" tools found by searching. Many are the second scam.',
                     'Do not reconnect the machine to test whether it worked.',
                 ],
@@ -1398,7 +1550,7 @@ window.BL_PLAYS = [
         glyph: '📱',
         urgency: 'critical',
         clock: 'If a thief watched you type the passcode, you have roughly twenty minutes before accounts start falling.',
-        lede: 'The device matters far less than what it can unlock. If the passcode was observed before the theft — the standard technique now — the thief can change your account password, disable Find My, and lock you out of your own life. Move on the accounts, not the hardware.',
+ lede: 'The device matters far less than what it can unlock. If the passcode was observed before the theft (the standard technique now) the thief can change your account password, disable Find My, and lock you out of your own life. Move on the accounts, not the hardware.',
         signs: [
             'The device is gone and you may have unlocked it in public shortly before.',
             'It was taken in a bar, on a train, or from a table.',
@@ -1408,7 +1560,7 @@ window.BL_PLAYS = [
                 h: 'Do this now',
                 kind: 'first',
                 steps: [
-                    'From another device, sign into your Apple, Google or Microsoft account and **change that password first** — before marking anything lost. If the thief has your passcode they are racing you for exactly this.',
+ 'From another device, sign into your Apple, Google or Microsoft account and **change that password first**: before marking anything lost. If the thief has your passcode they are racing you for exactly this.',
                     'Then mark the device lost and, if it holds anything sensitive, wipe it remotely.',
                     'Phone your mobile provider and have the SIM blocked and the number protected against porting.',
                     'Sign out of all sessions on your email, bank and password manager.',
@@ -1419,10 +1571,10 @@ window.BL_PLAYS = [
                 h: 'Then, today',
                 kind: 'do',
                 steps: [
-                    'Report the theft to the police and get a reference — insurers and banks will ask.',
+ 'Report the theft to the police and get a reference. Insurers and banks will ask.',
                     'Remove the device from the trusted-device lists on your accounts.',
                     'Change the passwords of anything that was logged in on it, especially work accounts.',
-                    'Tell your employer if it was a work device or held work mail — that is their incident too, and the clock matters for them.',
+ 'Tell your employer if it was a work device or held work mail. That is their incident too, and the clock matters for them.',
                     'Report the IMEI to your carrier so the handset can be blacklisted.',
                 ],
             },
@@ -1431,7 +1583,7 @@ window.BL_PLAYS = [
                 kind: 'note',
                 steps: [
                     'Use a six-digit or alphanumeric passcode and cover your hand. Watching the passcode is the whole attack.',
-                    'Turn on the setting that requires biometrics to change account settings — iOS Stolen Device Protection and its equivalents exist precisely for this.',
+ 'Turn on the setting that requires biometrics to change account settings: iOS Stolen Device Protection and its equivalents exist precisely for this.',
                     'Hide message previews on the lock screen so one-time codes are not readable through the glass.',
                 ],
             },
@@ -1446,11 +1598,11 @@ window.BL_PLAYS = [
         id: 'deepfake-call',
         aud: 'user',
         cat: 'people',
-        title: 'Someone I know called and asked for money — was it really them?',
+ title: 'Someone I know called and asked for money: was it really them?',
         glyph: '🎭',
         urgency: 'high',
         clock: 'The urgency in the call is manufactured. There is always time to hang up and call back.',
-        lede: 'A few seconds of audio from a voicemail greeting or a social post is now enough to clone a voice convincingly on a phone line. Video calls can be synthesised too. So the voice is no longer evidence — only a callback on a number you already had is.',
+ lede: 'A few seconds of audio from a voicemail greeting or a social post is now enough to clone a voice convincingly on a phone line. Video calls can be synthesised too. So the voice is no longer evidence, only a callback on a number you already had is.',
         signs: [
             'A relative in sudden trouble: an accident, an arrest, a hospital, a phone that broke.',
             'A new or withheld number, or a message that says "this is my new number".',
@@ -1472,7 +1624,7 @@ window.BL_PLAYS = [
                 h: 'If you already sent money',
                 kind: 'do',
                 steps: [
-                    'Phone your bank immediately and ask for a recall — the window is hours.',
+ 'Phone your bank immediately and ask for a recall. The window is hours.',
                     'Report to the police and the national fraud service.',
                     'Preserve the number, the messages and the payment details.',
                     'Follow the full **tricked into sending money** playbook.',
@@ -1525,7 +1677,7 @@ window.BL_PLAYS = [
                 steps: [
                     'Change the password on that service, and enable the strongest second factor it offers.',
                     'Run your password manager’s breach report and fix everything it flags.',
-                    'Watch for the follow-up phishing — it will quote your real order, your real address or your real account number, because they have them.',
+ 'Watch for the follow-up phishing. It will quote your real order, your real address or your real account number, because they have them.',
                     'Verify anything unexpected that follows by contacting the company through their own app or a number you already had.',
                 ],
             },
@@ -1576,7 +1728,7 @@ window.BL_PLAYS = [
                 kind: 'do',
                 steps: [
                     'Dispute each fraudulent entry **in writing**, quoting the crime reference. Keep copies of everything.',
-                    'Contact each lender’s fraud team directly — not customer service — and ask for their fraud claim process.',
+ 'Contact each lender’s fraud team directly (not customer service) and ask for their fraud claim process.',
                     'Check whether your post has been redirected without your consent; challenge it with the postal service.',
                     'Check your tax and benefits accounts for filings you did not make.',
                     'Keep a dated log: who, when, what was said, reference numbers. This log is what eventually wins the arguments.',
@@ -1633,7 +1785,7 @@ window.BL_PLAYS = [
                     'Report to the police.',
                     'Secure the accounts: change passwords, enable MFA, sign out of all sessions, set profiles private.',
                     'If money moved, follow the money playbooks and phone the bank.',
-                    'If your child was asked to receive and forward money, that is **money muling** — say so to the bank early; it is a criminal offence they may not understand they committed.',
+ 'If your child was asked to receive and forward money, that is **money muling**: say so to the bank early; it is a criminal offence they may not understand they committed.',
                 ],
             },
             {
@@ -1660,7 +1812,7 @@ window.BL_PLAYS = [
         glyph: '🌫',
         urgency: 'normal',
         clock: 'No rush. Use the time to check properly rather than worrying vaguely.',
-        lede: 'Vague unease is worth acting on — people are usually reacting to something real they have not consciously named yet. Here is a fifteen-minute sweep that either finds it or lets you stop thinking about it.',
+ lede: 'Vague unease is worth acting on. People are usually reacting to something real they have not consciously named yet. Here is a fifteen-minute sweep that either finds it or lets you stop thinking about it.',
         signs: [
             'A message you half-remember interacting with.',
             'A device behaving slightly differently.',
@@ -1717,10 +1869,10 @@ window.BL_PLAYS = [
         glyph: '📨',
         urgency: 'normal',
         clock: 'Triage inside 30 minutes. If anyone interacted, the clock changes character entirely.',
-        lede: 'Most reports are benign and a few are the first visible edge of an active campaign. Triage in a fixed order so the expensive question — did anyone interact — is answered before the interesting one, which is what the payload does.',
+ lede: 'Most reports are benign and a few are the first visible edge of an active campaign. Triage in a fixed order so the expensive question (did anyone interact) is answered before the interesting one, which is what the payload does.',
         signs: [
             'A report via the phishing button, the security mailbox, or the service desk.',
-            'A user asking "is this real?" — treat identically.',
+ 'A user asking "is this real?". Treat identically.',
         ],
         sections: [
             {
@@ -1741,7 +1893,7 @@ window.BL_PLAYS = [
                     'Purge or soft-delete the message from all mailboxes where it landed.',
                     'Block the sender domain, the URL domain and the file hash at mail gateway, proxy and DNS. Expect the infrastructure to rotate within hours.',
                     'Detonate URLs and attachments in a sandbox from a non-attributable network, not from a corporate address.',
-                    'Check proxy and DNS logs for anyone who reached the URL, including from mobile — a QR-delivered lure will not appear in mail-click telemetry at all.',
+ 'Check proxy and DNS logs for anyone who reached the URL, including from mobile. A QR-delivered lure will not appear in mail-click telemetry at all.',
                     'If any recipient interacted, treat their identity as compromised and move to the credential playbook without waiting for confirmation.',
                 ],
             },
@@ -1756,8 +1908,8 @@ window.BL_PLAYS = [
             },
         ],
         queries: [
-            { label: 'Microsoft 365 — hunt delivered messages', lang: 'KQL', q: 'EmailEvents\n| where Timestamp > ago(7d)\n| where SenderFromDomain == "<domain>" or Subject has "<subject fragment>"\n| project Timestamp, SenderFromAddress, RecipientEmailAddress, Subject, DeliveryAction, DeliveryLocation, NetworkMessageId' },
-            { label: 'Microsoft 365 — who actually clicked', lang: 'KQL', q: 'UrlClickEvents\n| where Timestamp > ago(7d)\n| where Url has "<domain>"\n| project Timestamp, AccountUpn, Url, ActionType, IsClickedThrough, NetworkMessageId' },
+ { label: 'Microsoft 365, hunt delivered messages', lang: 'KQL', q: 'EmailEvents\n| where Timestamp > ago(7d)\n| where SenderFromDomain == "<domain>" or Subject has "<subject fragment>"\n| project Timestamp, SenderFromAddress, RecipientEmailAddress, Subject, DeliveryAction, DeliveryLocation, NetworkMessageId' },
+ { label: 'Microsoft 365, who actually clicked', lang: 'KQL', q: 'UrlClickEvents\n| where Timestamp > ago(7d)\n| where Url has "<domain>"\n| project Timestamp, AccountUpn, Url, ActionType, IsClickedThrough, NetworkMessageId' },
         ],
         terms: ['phishing', 'aitm', 'quishing', 'ioc'],
         defend: ['org-identity'],
@@ -1773,14 +1925,14 @@ window.BL_PLAYS = [
         glyph: '🎣',
         urgency: 'critical',
         clock: 'Automated kits authenticate within seconds. Session revocation is the only step with real urgency.',
-        lede: 'Assume the credential and the session are both gone, and assume the second factor did not help — modern kits relay it live. A password reset without token revocation leaves the attacker signed in, and that is the single most common failure in this response.',
+ lede: 'Assume the credential and the session are both gone, and assume the second factor did not help: modern kits relay it live. A password reset without token revocation leaves the attacker signed in, and that is the single most common failure in this response.',
         signs: [
             'Self-reported credential entry, or click telemetry to a known harvesting domain.',
             'Sign-in from an unfamiliar ASN with no failed attempts and no MFA challenge.',
         ],
         sections: [
             {
-                h: 'Contain — in this order',
+ h: 'Contain, in this order',
                 kind: 'first',
                 steps: [
                     '**Revoke all sessions and refresh tokens** for the identity. Do this before the password reset; a password change alone does not invalidate an issued token.',
@@ -1798,7 +1950,7 @@ window.BL_PLAYS = [
                     'Establish the earliest credible compromise time, not the first alert. Scope everything from there.',
                     'Pull sign-in logs: source IPs, ASNs, user agents, device IDs, conditional-access results, and whether MFA was satisfied or skipped.',
                     'Enumerate the blast radius: mailbox contents, shared and delegated mailboxes, files, SaaS reachable via SSO, admin roles, standing privileges, API keys.',
-                    'Search sent items and audit logs for messages sent as the user — especially anything touching payments or credentials.',
+ 'Search sent items and audit logs for messages sent as the user, especially anything touching payments or credentials.',
                     'Check whether the same credential is used anywhere outside SSO: VPN, legacy protocols, service accounts, personal reuse on corporate systems.',
                 ],
             },
@@ -1808,20 +1960,20 @@ window.BL_PLAYS = [
                 steps: [
                     'Have the user re-enrol with a phishing-resistant method. If you were ever going to prioritise FIDO2 rollout, this is the person to start with.',
                     'Notify recipients of any fraudulent mail sent from the account, quickly, before it lands.',
-                    'If finance data was reachable, warn the finance team explicitly — a BEC attempt frequently follows within days.',
+ 'If finance data was reachable, warn the finance team explicitly: a BEC attempt frequently follows within days.',
                     'Assess notification obligations if personal data was accessible. The clock started at discovery, not at conclusion.',
                 ],
             },
             {
-                h: 'Pull the evidence — before it ages out',
+ h: 'Pull the evidence, before it ages out',
                 kind: 'evidence',
                 steps: [
                     '**Message trace first.** Roughly 10 days of retention, and it shows what was sent from the mailbox in the user’s name.',
-                    '**Sign-in logs, all four tables**: interactive, **non-interactive**, service principal, managed identity. Non-interactive is where a replayed token appears — reading only the interactive table is the most common reason a real compromise gets closed as benign.',
+ '**Sign-in logs, all four tables**: interactive, **non-interactive**, service principal, managed identity. Non-interactive is where a replayed token appears. Reading only the interactive table is the most common reason a real compromise gets closed as benign.',
                     '**Audit logs** for the full window. Export JSON rather than CSV; the CSV drops the old and new values that show what actually changed.',
-                    '**Purview Unified Audit Log** — `MailItemsAccessed` answers "did they actually read it" and is in Audit **Standard**, on by default for E3/E5 mailboxes; plus sends, rules, forwarding, downloads, sharing, and the search queries, which are often the clearest statement of intent you will get.',
+ '**Purview Unified Audit Log**. `MailItemsAccessed` answers "did they actually read it" and is in Audit **Standard**, on by default for E3/E5 mailboxes; plus sends, rules, forwarding, downloads, sharing, and the search queries, which are often the clearest statement of intent you will get.',
                     '**Defender**: `EmailEvents` and `UrlClickEvents` for delivery and click evidence, `CloudAppEvents` for mailbox rule creation.',
-                    '**Graph activity logs** if enabled — the difference between "had permission" and "read everything".',
+ '**Graph activity logs** if enabled. The difference between "had permission" and "read everything".',
                     'Record which logs you did **not** have. A gap you name is a finding; a gap you omit is a false reassurance.',
                 ],
             },
@@ -1837,8 +1989,8 @@ window.BL_PLAYS = [
             },
         ],
         queries: [
-            { label: 'Entra ID — sign-ins for the identity', lang: 'KQL', q: 'SigninLogs\n| where TimeGenerated > ago(14d)\n| where UserPrincipalName =~ "<upn>"\n| project TimeGenerated, IPAddress, Location, AppDisplayName, UserAgent, AuthenticationRequirement, ResultType, ConditionalAccessStatus\n| order by TimeGenerated asc' },
-            { label: 'Entra ID — auth method and consent changes', lang: 'KQL', q: 'AuditLogs\n| where TimeGenerated > ago(30d)\n| where OperationName has_any ("security info", "authentication method", "Consent to application", "Add app role assignment")\n| project TimeGenerated, OperationName, InitiatedBy, TargetResources' },
+ { label: 'Entra ID. Sign-ins for the identity', lang: 'KQL', q: 'SigninLogs\n| where TimeGenerated > ago(14d)\n| where UserPrincipalName =~ "<upn>"\n| project TimeGenerated, IPAddress, Location, AppDisplayName, UserAgent, AuthenticationRequirement, ResultType, ConditionalAccessStatus\n| order by TimeGenerated asc' },
+ { label: 'Entra ID, auth method and consent changes', lang: 'KQL', q: 'AuditLogs\n| where TimeGenerated > ago(30d)\n| where OperationName has_any ("security info", "authentication method", "Consent to application", "Add app role assignment")\n| project TimeGenerated, OperationName, InitiatedBy, TargetResources' },
         ],
         terms: ['aitm', 'session-hijacking', 'containment', 'blast-radius'],
         defend: ['org-identity'],
@@ -1850,7 +2002,7 @@ window.BL_PLAYS = [
         id: 'pro-token-theft',
         aud: 'pro',
         cat: 'identity',
-        title: 'Session token theft — logged in without a password',
+ title: 'Session token theft, logged in without a password',
         glyph: '🍪',
         urgency: 'critical',
         clock: 'Tokens live for hours by default. Revoke, then verify revocation actually took effect.',
@@ -1868,10 +2020,10 @@ window.BL_PLAYS = [
                 steps: [
                     'Revoke refresh tokens and sign the user out of all sessions across every identity provider and federated application.',
                     'Reset the password **after** revocation, so a stolen token cannot be used to reset it back.',
-                    'Check that **continuous access evaluation** has not been disabled for these users by a Conditional Access policy — it is on by default, and it is what makes revocation propagate in minutes instead of at token expiry.',
+ 'Check that **continuous access evaluation** has not been disabled for these users by a Conditional Access policy. It is on by default, and it is what makes revocation propagate in minutes instead of at token expiry.',
                     'Block the attacker infrastructure by ASN or IP where you can do so without collateral damage, as a stopgap only.',
                     'If the source was an infostealer, the endpoint is compromised: isolate it and treat every credential entered on it as burned.',
-                    '**Verify revocation worked.** Confirm the session is actually gone rather than assuming the button did it — recheck activity fifteen minutes later.',
+ '**Verify revocation worked.** Confirm the session is actually gone rather than assuming the button did it: recheck activity fifteen minutes later.',
                 ],
             },
             {
@@ -1879,7 +2031,7 @@ window.BL_PLAYS = [
                 kind: 'do',
                 steps: [
                     'Distinguish the two sources: an AiTM login has a corresponding phishing click; an infostealer has an endpoint event and usually more than one service affected at once.',
-                    'If infostealer: enumerate everything the browser profile held — saved passwords, cookies, autofill, wallet files, VPN configs — and treat all of it as disclosed.',
+ 'If infostealer: enumerate everything the browser profile held (saved passwords, cookies, autofill, wallet files, VPN configs) and treat all of it as disclosed.',
                     'Correlate the same source infrastructure across other identities. Token theft is rarely singular.',
                     'Check for persistence established during the session: MFA methods, app consents, mailbox rules, delegations, device registrations, PIM eligibility.',
                 ],
@@ -1888,7 +2040,7 @@ window.BL_PLAYS = [
                 h: 'Harden',
                 kind: 'note',
                 steps: [
-                    'FIDO2 or certificate-based authentication prevents the AiTM variant outright — the credential will not function on the proxy domain.',
+ 'FIDO2 or certificate-based authentication prevents the AiTM variant outright. The credential will not function on the proxy domain.',
                     'Device-bound sessions and compliant-device conditional access prevent the stolen-cookie variant from replaying off an unmanaged host.',
                     'Shorten session lifetimes for high-privilege roles and require reauthentication for sensitive operations.',
                 ],
@@ -1911,7 +2063,7 @@ window.BL_PLAYS = [
         glyph: '🌍',
         urgency: 'high',
         clock: 'Triage within the hour. Most are benign; the ones that are not are already at the persistence stage.',
-        lede: 'Impossible travel is a noisy signal with a poor base rate — VPNs, mobile roaming, corporate egress and cloud relays generate it constantly. So do not react to the geography. React to the supporting signals, and have a fixed set of them.',
+ lede: 'Impossible travel is a noisy signal with a poor base rate: VPNs, mobile roaming, corporate egress and cloud relays generate it constantly. So do not react to the geography. React to the supporting signals, and have a fixed set of them.',
         signs: [
             'Geographically incompatible successful sign-ins within a short window.',
             'Multiple ASNs, especially hosting providers, VPN exit nodes or residential proxy networks.',
@@ -1922,7 +2074,7 @@ window.BL_PLAYS = [
                 kind: 'first',
                 steps: [
                     'Rule out the boring explanations first: corporate VPN egress, a personal VPN, roaming, an inspection proxy, a mobile carrier NAT, a legitimately travelling user, and automation running under a user identity.',
-                    'Contact the user out of band — phone or chat, not email. Ask if they are travelling and whether they use a VPN.',
+ 'Contact the user out of band. Phone or chat, not email. Ask if they are travelling and whether they use a VPN.',
                     'Check the **corroborating** signals rather than the location: unfamiliar user agent, unmanaged device, absent MFA interaction, new device registration, first-seen ASN.',
                     'Check whether MFA was actually performed or satisfied by a prior claim. "Satisfied by claim in the token" alongside impossible travel is the token-theft signature.',
                 ],
@@ -1935,7 +2087,7 @@ window.BL_PLAYS = [
                     'Review and clean authentication methods, app consents, mailbox rules and delegated access.',
                     'Enumerate what was accessed during the anomalous window: mail, files, SaaS, admin actions.',
                     'Check whether the identity holds privileged roles or standing access to anything sensitive, and whether any of it was used.',
-                    'Pivot on the source infrastructure across all identities — the same ASN often shows several victims.',
+ 'Pivot on the source infrastructure across all identities. The same ASN often shows several victims.',
                 ],
             },
             {
@@ -1943,7 +2095,7 @@ window.BL_PLAYS = [
                 kind: 'note',
                 steps: [
                     'Baseline and exclude your own egress and known VPN ranges so the alert means something.',
-                    'Alert on the combination — anomalous location **plus** new device **plus** no MFA interaction — rather than on location alone.',
+ 'Alert on the combination (anomalous location **plus** new device **plus** no MFA interaction) rather than on location alone.',
                     'Track your false-positive rate. An alert nobody trusts is worse than no alert, because it trains the team to close it unread.',
                 ],
             },
@@ -1979,7 +2131,7 @@ window.BL_PLAYS = [
                     'Treat the password as compromised regardless of whether any prompt was approved. Reset it.',
                     'Revoke sessions and refresh tokens.',
                     'Audit registered authentication methods and remove anything registered outside a known-good window. Force re-registration under supervision.',
-                    'Check whether the user was contacted by phone — attacker-initiated helpdesk calls accompany this technique and mean a more determined adversary.',
+ 'Check whether the user was contacted by phone: attacker-initiated helpdesk calls accompany this technique and mean a more determined adversary.',
                     'Check the actual helpdesk too: verify no assisted reset or MFA re-enrolment was performed for this user on a social-engineering call.',
                 ],
             },
@@ -1996,7 +2148,7 @@ window.BL_PLAYS = [
                 h: 'Fix the class',
                 kind: 'note',
                 steps: [
-                    'Turn on **additional context** — application name and sign-in location on the prompt. Number matching itself has been enforced for all Microsoft Authenticator push notifications since May 2023 and cannot be switched off, so the task is confirming your **third-party** MFA providers match it, not enabling it in Entra.',
+ 'Turn on **additional context**: application name and sign-in location on the prompt. Number matching itself has been enforced for all Microsoft Authenticator push notifications since May 2023 and cannot be switched off, so the task is confirming your **third-party** MFA providers match it, not enabling it in Entra.',
                     'Better still, move the affected population off push entirely to a **phishing-resistant** method. Number matching raises the bar; it does not remove the class.',
                     'Alert on MFA-method registration as a first-class detection, not a report line.',
                     'Harden the helpdesk identity-verification process. Assisted MFA resets are a well-worn route into large organisations, and a scripted callback requirement closes it.',
@@ -2005,7 +2157,7 @@ window.BL_PLAYS = [
             },
         ],
         queries: [
-            { label: 'Repeated MFA denials or timeouts', lang: 'KQL', q: '// 500121 = strong auth failed (denied, timed out, or fraud reported)\n// 50074  = user did not satisfy the MFA challenge\n// Deliberately NOT 50076 — that is the ordinary "MFA required" interrupt and\n// fires on healthy sign-ins, which would bury the pattern you are hunting.\nSigninLogs\n| where TimeGenerated > ago(24h)\n| where ResultType in ("500121", "50074")\n| summarize attempts = count(), ips = make_set(IPAddress), apps = make_set(AppDisplayName, 10)\n          by UserPrincipalName, bin(TimeGenerated, 1h)\n| where attempts > 5\n| order by attempts desc' },
+ { label: 'Repeated MFA denials or timeouts', lang: 'KQL', q: '// 500121 = strong auth failed (denied, timed out, or fraud reported)\n// 50074 = user did not satisfy the MFA challenge\n// Deliberately NOT 50076. That is the ordinary "MFA required" interrupt and\n// fires on healthy sign-ins, which would bury the pattern you are hunting.\nSigninLogs\n| where TimeGenerated > ago(24h)\n| where ResultType in ("500121", "50074")\n| summarize attempts = count(), ips = make_set(IPAddress), apps = make_set(AppDisplayName, 10)\n by UserPrincipalName, bin(TimeGenerated, 1h)\n| where attempts > 5\n| order by attempts desc' },
         ],
         terms: ['mfa-fatigue', 'mfa', 'credential-stuffing'],
         defend: ['org-identity'],
@@ -2024,7 +2176,7 @@ window.BL_PLAYS = [
         lede: 'Consent phishing bypasses the credential entirely: the user approves a genuine OAuth prompt and the attacker receives durable, token-based access to mail or files. Password resets, MFA re-enrolment and session revocation all leave it untouched. It must be revoked as its own object.',
         signs: [
             'A consent grant to a low-reputation, recently-registered or low-user-count application.',
-            'Mail or file scopes — `Mail.Read`, `Mail.ReadWrite`, `Files.Read.All`, `offline_access`.',
+ 'Mail or file scopes: `Mail.Read`, `Mail.ReadWrite`, `Files.Read.All`, `offline_access`.',
             'Multiple users consenting to the same application in a short window.',
             'Data access continuing after a full credential reset.',
         ],
@@ -2034,7 +2186,7 @@ window.BL_PLAYS = [
                 kind: 'first',
                 steps: [
                     'Revoke the service principal’s consent and delete the enterprise application or service principal.',
-                    'Revoke refresh tokens for every affected user — the grant issues its own tokens.',
+ 'Revoke refresh tokens for every affected user: the grant issues its own tokens.',
                     'Disable user consent for applications, or restrict it to verified publishers with low-risk permissions only, and enable an admin consent workflow.',
                     'Identify every user who consented, not only the reported one.',
                 ],
@@ -2076,7 +2228,7 @@ window.BL_PLAYS = [
         glyph: '📋',
         urgency: 'critical',
         clock: 'A forwarding rule is exfiltration in progress. It is also usually the last visible step before a payment is diverted.',
-        lede: 'This is one of the highest-fidelity signals in the whole discipline. Attackers create rules to hide their own activity — moving replies out of sight so the real user never notices the conversation happening in their name. Where you find one, look for a payment.',
+ lede: 'This is one of the highest-fidelity signals in the whole discipline. Attackers create rules to hide their own activity: moving replies out of sight so the real user never notices the conversation happening in their name. Where you find one, look for a payment.',
         signs: [
             'A rule with a blank, single-character or punctuation name.',
             'Rules moving mail to RSS Feeds, Archive, Conversation History or Deleted Items.',
@@ -2101,7 +2253,7 @@ window.BL_PLAYS = [
                 kind: 'do',
                 steps: [
                     'Determine when the rule was created, from what IP, and by which session. That timestamp is your compromise anchor.',
-                    'Reconstruct the hidden conversation from the target folder — that is the part the user never saw.',
+ 'Reconstruct the hidden conversation from the target folder. That is the part the user never saw.',
                     'Identify external parties involved and whether any payment instruction was sent or altered.',
                     'Check whether the attacker registered a lookalike domain to continue the thread after eviction. They usually have.',
                     'Search the tenant for the same rule pattern across all mailboxes.',
@@ -2113,7 +2265,7 @@ window.BL_PLAYS = [
                 steps: [
                     'Warn counterparties in any hijacked thread by phone, using numbers held before the incident.',
                     'Alert finance to halt and re-verify any payment discussed in the affected threads.',
-                    'Assess personal-data notification obligations — mailbox contents are usually personal data, and the clock started at discovery.',
+ 'Assess personal-data notification obligations. Mailbox contents are usually personal data, and the clock started at discovery.',
                 ],
             },
         ],
@@ -2142,25 +2294,25 @@ window.BL_PLAYS = [
         ],
         sections: [
             {
-                h: 'Money track — start immediately',
+ h: 'Money track. Start immediately',
                 kind: 'first',
                 steps: [
                     'Phone your bank and request an immediate recall, with exact amount, timestamp and beneficiary details.',
                     'Ask them to contact the beneficiary bank to freeze remaining funds. That request is what actually stops it.',
                     'Halt all other pending payments to that counterparty pending voice verification on a pre-held number.',
-                    'Notify your insurer — crime and cyber policies often have short notification windows and will otherwise decline.',
+ 'Notify your insurer. Crime and cyber policies often have short notification windows and will otherwise decline.',
                     'Report to police and the national fraud reporting service; get the reference for the insurer.',
                 ],
             },
             {
-                h: 'Investigation track — in parallel',
+ h: 'Investigation track, in parallel',
                 kind: 'do',
                 steps: [
                     'Preserve the full email thread **with headers**, both sides if the counterparty will cooperate.',
                     'Determine which mailbox was compromised: yours, theirs, or neither (a lookalike domain and no compromise at all).',
                     'Check your own tenant for the identity indicators: anomalous sign-ins, new rules, forwarding, consent grants.',
                     'If it was your side, run the identity compromise playbook in full and establish the earliest access date.',
-                    'If it was their side, tell them plainly and in writing — their other customers are being defrauded right now.',
+ 'If it was their side, tell them plainly and in writing. Their other customers are being defrauded right now.',
                     'Check for a registered lookalike domain and get it taken down.',
                 ],
             },
@@ -2200,7 +2352,7 @@ window.BL_PLAYS = [
                 h: 'Contain',
                 kind: 'first',
                 steps: [
-                    'Network-isolate the endpoint via EDR. Do not power it off — you lose memory and live session state.',
+ 'Network-isolate the endpoint via EDR. Do not power it off: you lose memory and live session state.',
                     'Revoke sessions and reset credentials for every account the user held, from a **different** device.',
                     'Revoke and reissue any certificates, API keys, SSH keys, VPN profiles and tokens present on the host.',
                     'Reset any shared or service account whose credentials were stored in that browser profile or in files on the host.',
@@ -2211,7 +2363,7 @@ window.BL_PLAYS = [
                 h: 'Scope',
                 kind: 'do',
                 steps: [
-                    'Enumerate the browser profiles present and what each stored — saved logins, cookies, autofill, payment methods.',
+ 'Enumerate the browser profiles present and what each stored: saved logins, cookies, autofill, payment methods.',
                     'If a stealer log is available through threat intelligence, use it: it lists exactly what was taken, which beats guessing.',
                     'Hunt the initial access: cracked software, fake update, malvertising download, ClickFix paste. Then hunt that same vector across the estate.',
                     'Check for lateral use of the stolen credentials, especially against VPN, remote access and SaaS.',
@@ -2225,7 +2377,7 @@ window.BL_PLAYS = [
                     '**Rebuild the host from known-good media.** Cleaning is not remediation for credential theft that has already succeeded.',
                     'Restore data from backup only after validating it, and never restore browser profiles.',
                     'Confirm the user re-enrols MFA and does not restore saved passwords from a synced profile.',
-                    'Consider blocking the initial-access vector at policy level — application control, download reputation, or removing local admin.',
+ 'Consider blocking the initial-access vector at policy level: application control, download reputation, or removing local admin.',
                 ],
             },
         ],
@@ -2246,7 +2398,7 @@ window.BL_PLAYS = [
         glyph: '🔒',
         urgency: 'critical',
         clock: 'If you have caught precursors, you have hours. If encryption has started, you have minutes to limit spread.',
-        lede: 'The encryption is the last act, typically days or weeks after initial access. If you are seeing precursors — credential dumping, backup deletion, defence tampering, mass discovery — you are inside the window where the outcome is still decidable. Act like it.',
+ lede: 'The encryption is the last act, typically days or weeks after initial access. If you are seeing precursors (credential dumping, backup deletion, defence tampering, mass discovery) you are inside the window where the outcome is still decidable. Act like it.',
         signs: [
             '**Precursors:** shadow copy deletion, backup agent tampering, security tooling disabled, mass file discovery, new domain admin, Cobalt Strike or similar beaconing, legitimate remote-access tools appearing on servers.',
             '**In progress:** mass file renames, ransom notes appearing across shares, sudden CPU and disk load on file servers.',
@@ -2259,9 +2411,9 @@ window.BL_PLAYS = [
                     'Declare an incident formally. Move the team to the pre-agreed out-of-band channel; assume email and chat are visible to the adversary.',
                     'Isolate rather than shut down. Preserve memory and live state where you can.',
                     'Protect the backups before anything else: disconnect, make immutable, verify they exist and are restorable. Backups are targeted first, deliberately.',
-                    'Disable the identities and remote-access paths being used, and reset the accounts used for lateral movement — including any service accounts and the break-glass ones if they were touched.',
+ 'Disable the identities and remote-access paths being used, and reset the accounts used for lateral movement, including any service accounts and the break-glass ones if they were touched.',
                     'Segment: shut down inter-site links and flat-network paths that permit spread, accepting the operational cost.',
-                    'Start the log now — a running timeline of actions and times. Everything downstream depends on it.',
+ 'Start the log now: a running timeline of actions and times. Everything downstream depends on it.',
                 ],
             },
             {
@@ -2270,7 +2422,7 @@ window.BL_PLAYS = [
                 steps: [
                     'Engage insurer, legal counsel and external DFIR before technical decisions narrow your options. Involve legal early if privilege matters in your jurisdiction.',
                     'Identify initial access, dwell time and the accounts used. Scope from the earliest credible evidence, not from the first alert.',
-                    'Establish whether data was exfiltrated — that determines the notification obligations regardless of whether you restore cleanly.',
+ 'Establish whether data was exfiltrated: that determines the notification obligations regardless of whether you restore cleanly.',
                     'Preserve forensic images before rebuilding anything you might later need to explain.',
                     'Rebuild identity trust deliberately: assume the domain is compromised, plan a staged recovery, and reset `krbtgt` twice with the correct interval.',
                 ],
@@ -2280,7 +2432,7 @@ window.BL_PLAYS = [
                 kind: 'note',
                 steps: [
                     'Who is authorised to disconnect what, at 3am, without further approval.',
-                    'Whether payment is on the table at all — and who decides, with sanctions screening as a hard precondition.',
+ 'Whether payment is on the table at all, and who decides, with sanctions screening as a hard precondition.',
                     'Who speaks to staff, customers, press and the regulator, and who definitely does not.',
                     'Where the incident plan is stored such that it is readable when the domain is down.',
                     'None of these are answerable in the first hour. They are only answerable in advance.',
@@ -2315,7 +2467,7 @@ window.BL_PLAYS = [
                     'Purge from all mailboxes, including already-read messages, and record what was removed.',
                     'Block sender infrastructure, URL domains and file hashes at mail, proxy and DNS.',
                     'Extract the full recipient list and delivery status. That list, not the reports, is your investigation scope.',
-                    'Cross-reference the recipient list against click telemetry, proxy logs and DNS logs — including mobile, which mail telemetry misses entirely.',
+ 'Cross-reference the recipient list against click telemetry, proxy logs and DNS logs, including mobile, which mail telemetry misses entirely.',
                     'Cross-reference against anomalous sign-ins in the same window and pre-emptively revoke sessions for anyone who both clicked and shows a sign-in anomaly.',
                 ],
             },
@@ -2323,10 +2475,10 @@ window.BL_PLAYS = [
                 h: 'Communicate',
                 kind: 'do',
                 steps: [
-                    'Send one clear message to all recipients with the **specific** lure — the actual subject line and sender — not a generic reminder to be vigilant.',
+ 'Send one clear message to all recipients with the **specific** lure (the actual subject line and sender) not a generic reminder to be vigilant.',
                     'Give a single explicit instruction: "if you entered credentials, phone us on this number now, and you are not in trouble."',
                     'Brief the service desk with a script before they are flooded, and give them the containment steps they can perform themselves.',
-                    'If the campaign impersonates a real partner or supplier, notify them — they may be the compromised source.',
+ 'If the campaign impersonates a real partner or supplier, notify them. They may be the compromised source.',
                 ],
             },
             {
@@ -2371,7 +2523,7 @@ window.BL_PLAYS = [
                 h: 'Assess and record',
                 kind: 'evidence',
                 steps: [
-                    'Determine what data was stored locally, not merely synced — local caches, downloads, PST files, exports.',
+ 'Determine what data was stored locally, not merely synced: local caches, downloads, PST files, exports.',
                     'Assess whether personal data was included and whether that triggers a notification obligation.',
                     'Record the loss circumstances, encryption status, wipe status and timeline. This record is the defensible artefact.',
                     'Confirm the police report reference where one exists.',
@@ -2400,7 +2552,7 @@ window.BL_PLAYS = [
         glyph: '🔓',
         urgency: 'critical',
         clock: 'Public cloud keys are found and used by automated scrapers within minutes. Rotate first, explain later.',
-        lede: 'Rotation comes before investigation, always. Deleting the commit does nothing — it is cloned, cached and indexed within seconds of being pushed, and Git history keeps it anyway.',
+ lede: 'Rotation comes before investigation, always. Deleting the commit does nothing. It is cloned, cached and indexed within seconds of being pushed, and Git history keeps it anyway.',
         signs: [
             'Secret scanning alert on a repository, a paste site or a public bucket.',
             'A cloud provider notification of an exposed key.',
@@ -2414,7 +2566,7 @@ window.BL_PLAYS = [
                     '**Revoke and rotate the secret immediately.** Do not wait to determine whether it was used.',
                     'Do not merely delete the commit or the file. Assume it was captured; the exposure window is what matters, not the current state.',
                     'Review usage logs for the credential across the whole exposure window.',
-                    'Check for resources created with it — compute instances, users, roles, access keys, persistence.',
+ 'Check for resources created with it: compute instances, users, roles, access keys, persistence.',
                     'Check for any additional identities or keys created by the exposed one.',
                 ],
             },
@@ -2424,14 +2576,14 @@ window.BL_PLAYS = [
                 steps: [
                     'Scan the rest of the repository, and the organisation, for other secrets.',
                     'Search Git history, not just the current tree.',
-                    'Determine how it got there and whether the same pattern exists elsewhere — a hardcoded secret is rarely unique.',
+ 'Determine how it got there and whether the same pattern exists elsewhere. A hardcoded secret is rarely unique.',
                     'Move the secret into a managed secret store and replace it with a short-lived or workload identity if possible.',
                     'Add pre-commit and CI secret scanning so the next one is caught before push, not after.',
                 ],
             },
         ],
         queries: [
-            { label: 'AWS — activity for an exposed key', lang: 'Athena / CloudTrail', q: 'SELECT eventtime, eventname, sourceipaddress, useragent, errorcode\nFROM cloudtrail_logs\nWHERE useridentity.accesskeyid = \'<AKIA...>\'\n  AND eventtime > \'<exposure start>\'\nORDER BY eventtime;' },
+ { label: 'AWS, activity for an exposed key', lang: 'Athena / CloudTrail', q: 'SELECT eventtime, eventname, sourceipaddress, useragent, errorcode\nFROM cloudtrail_logs\nWHERE useridentity.accesskeyid = \'<AKIA...>\'\n AND eventtime > \'<exposure start>\'\nORDER BY eventtime;' },
         ],
         terms: ['eradication', 'ioc', 'blast-radius'],
         defend: ['org-readiness'],
@@ -2458,20 +2610,20 @@ window.BL_PLAYS = [
                     'Move to the out-of-band channel. Assume the adversary reads email and chat until proven otherwise.',
                     'Name a single incident lead and a single spokesperson. Everyone else routes through them.',
                     'Engage legal counsel early where privilege applies to investigation material.',
-                    'Notify insurers within their required window — often 24 to 72 hours, and often a condition of cover.',
+                    'Notify insurers within their required window, often 24 to 72 hours, and often a condition of cover.',
                 ],
             },
             {
                 h: 'Who, typically',
                 kind: 'do',
                 steps: [
-                    '**Executive leadership** — early, briefly, with what you know, what you do not, and what you need authority for.',
-                    '**Data protection regulator** — within the statutory window (72 hours under GDPR for a notifiable personal-data breach). Late-and-complete is worse than on-time-and-partial.',
-                    '**Affected individuals** — where there is high risk to their rights and freedoms, in plain language, with something specific they can actually do.',
-                    '**Customers and partners** — especially where their credentials, data or payments are implicated.',
-                    '**Sector regulators** — finance, health, critical infrastructure and telecoms typically have their own, shorter clocks.',
-                    '**Law enforcement** — early engagement is usually helpful and rarely obstructive.',
-                    '**Staff** — before they read it elsewhere. Tell them what to say if asked, and what not to.',
+                    '**Executive leadership**: early, briefly, with what you know, what you do not, and what you need authority for.',
+                    '**Data protection regulator**: within the statutory window (72 hours under GDPR for a notifiable personal-data breach). Late-and-complete is worse than on-time-and-partial.',
+                    '**Affected individuals**. Where there is high risk to their rights and freedoms, in plain language, with something specific they can actually do.',
+                    '**Customers and partners**, especially where their credentials, data or payments are implicated.',
+                    '**Sector regulators**: finance, health, critical infrastructure and telecoms typically have their own, shorter clocks.',
+                    '**Law enforcement**. Early engagement is usually helpful and rarely obstructive.',
+                    '**Staff**: before they read it elsewhere. Tell them what to say if asked, and what not to.',
                 ],
             },
             {

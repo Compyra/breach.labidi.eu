@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Breachlight — data-logs.js
+ Breachlight: data-logs.js
    --------------------------------------------------------------------------
    The evidence layer. Two catalogues:
 
@@ -15,9 +15,9 @@
    Matching contract used by the tool
      op      canonical operation string, matched case-insensitively
      aka[]   alternative strings that mean the same thing (Entra vs Purview vs
-             Exchange cmdlet naming). Matched the same way.       keys    search keywords for the SITE only — never used for matching, so
+ Exchange cmdlet naming). Matched the same way. keys search keywords for the SITE only, never used for matching, so
                it is safe to put natural-language phrasing here.     match   'exact' (default) | 'starts' | 'contains'
-             Use 'contains' sparingly — a loose match produces noise, and a
+ Use 'contains' sparingly. A loose match produces noise, and a
              noisy rule gets muted, which is worse than no rule.
    ========================================================================== */
 
@@ -32,10 +32,10 @@ window.BL_LOG_SOURCES = [
         must: true,
         what: 'Who authenticated, from where, with what, and whether policy applied. The first place to look and the easiest to look at incompletely.',
         holds: [
-            '**Interactive user sign-ins** — a human at a prompt. This is the only table most teams read.',
-            '**Non-interactive user sign-ins** — token refreshes and background client activity. **This is where replayed session tokens show up**, and skipping it is the single most common blind spot in a phishing investigation.',
-            '**Service principal sign-ins** — application identities. No user, no MFA, and invisible in the other tables.',
-            '**Managed identity sign-ins** — Azure workload identities.',
+            '**Interactive user sign-ins**: a human at a prompt. This is the only table most teams read.',
+            '**Non-interactive user sign-ins**: token refreshes and background client activity. **This is where replayed session tokens show up**, and skipping it is the single most common blind spot in a phishing investigation.',
+            '**Service principal sign-ins**: application identities. No user, no MFA, and invisible in the other tables.',
+            '**Managed identity sign-ins**: Azure workload identities.',
         ],
         fields: 'Timestamp · UPN · IP · location · ASN · application · resource · client app · authentication protocol · MFA result and method · Conditional Access result and which policies · device ID, compliance and join type · risk level · correlation ID · user agent.',
         retention: 'Portal: 7 days without a licence, 30 days with Entra ID P1 or P2. Longer only if you exported it. Assume you have 30 days unless you know otherwise.',
@@ -47,7 +47,7 @@ window.BL_LOG_SOURCES = [
         ],
         gotchas: [
             'The portal export is capped. If you filter to the user and the window rather than downloading everything, you will actually get everything.',
-            '**Success with no MFA interaction is not the same as no MFA.** "Previously satisfied" means a token already carried the claim — which is exactly what token theft looks like.',
+            '**Success with no MFA interaction is not the same as no MFA.** "Previously satisfied" means a token already carried the claim. Which is exactly what token theft looks like.',
             'Conditional Access showing `notApplied` on a successful sign-in means no policy covered it. That is a finding, not a blank.',
         ],
         tool: true,
@@ -64,7 +64,7 @@ window.BL_LOG_SOURCES = [
             'Application registrations, service principals, credentials added, consent granted, owners added.',
             'Conditional Access policy and named-location changes.',
             'Domain and federation settings.',
-            'Authentication method registration — the attacker adding their own MFA.',
+            'Authentication method registration: the attacker adding their own MFA.',
             'Group membership, device registration, partner relationships, cross-tenant settings.',
         ],
         fields: 'Timestamp · activity · category · initiated by (user or app) · actor IP · target resource · modified properties, old value and new value · result.',
@@ -75,7 +75,7 @@ window.BL_LOG_SOURCES = [
             'Or Microsoft Graph: `/auditLogs/directoryAudits`.',
         ],
         gotchas: [
-            'The interesting content lives inside `targetResources[].modifiedProperties`, which the CSV flattens badly. **Export JSON if you can** — the tool reads both, but JSON keeps the old and new values.',
+            'The interesting content lives inside `targetResources[].modifiedProperties`, which the CSV flattens badly. **Export JSON if you can**. The tool reads both, but JSON keeps the old and new values.',
             'An operation with `result: failure` still tells you what they tried.',
         ],
         tool: true,
@@ -86,24 +86,24 @@ window.BL_LOG_SOURCES = [
         aka: ['Microsoft 365 audit log', 'Office 365 audit', 'OfficeActivity'],
         glyph: '🗂',
         must: true,
-        what: 'What actually happened to the data — mailboxes, files, Teams, admin actions across Microsoft 365. The Entra logs tell you about identity; **this tells you what they read, sent and took**.',
+        what: 'What actually happened to the data: mailboxes, files, Teams, admin actions across Microsoft 365. The Entra logs tell you about identity; **this tells you what they read, sent and took**.',
         holds: [
             '**Mailbox**: `MailItemsAccessed`, `Send`, `SendAs`, `SendOnBehalf`, `New-InboxRule`, `Set-Mailbox`, `Add-MailboxPermission`, `MoveToDeletedItems`, `HardDelete`.',
             '**SharePoint and OneDrive**: `FileDownloaded`, `FileSyncDownloadedFull`, `AnonymousLinkCreated`, `SharingSet`, `FileAccessed`.',
-            '**Search**: `SearchQueryInitiatedExchange` and `…SharePoint` — what the attacker went looking for, which is often the clearest statement of intent you will get.',
-            '**eDiscovery**: `SearchCreated`, `SearchExported`, `ViewedSearchExported` — bulk collection by an administrator.',
+            '**Search**: `SearchQueryInitiatedExchange` and `…SharePoint`: what the attacker went looking for, which is often the clearest statement of intent you will get.',
+            '**eDiscovery**: `SearchCreated`, `SearchExported`, `ViewedSearchExported`: bulk collection by an administrator.',
             '**Exchange admin**: transport rules, journaling, audit configuration changes.',
-            '**Teams, Power Automate, Power Apps, Entra operations** — a copy of many directory events lands here too.',
+            '**Teams, Power Automate, Power Apps, Entra operations**: a copy of many directory events lands here too.',
         ],
-        fields: 'CreationDate · UserIds · Operations · RecordType · and `AuditData`, a JSON blob that holds everything that matters — client IP, user agent, folders, item subjects, parameters, and the `SessionId`.',
-        retention: 'Audit (Standard) retains **180 days** — raised from 90 for records generated on or after 17 October 2023. Audit (Premium) retains Entra, Exchange, OneDrive and SharePoint records for **one year** for E5-licensed users, everything else 180 days, and up to **10 years** with the add-on. Verify for your own tenant before relying on it.',
+        fields: 'CreationDate · UserIds · Operations · RecordType · and `AuditData`, a JSON blob that holds everything that matters: client IP, user agent, folders, item subjects, parameters, and the `SessionId`.',
+        retention: 'Audit (Standard) retains **180 days**: raised from 90 for records generated on or after 17 October 2023. Audit (Premium) retains Entra, Exchange, OneDrive and SharePoint records for **one year** for E5-licensed users, everything else 180 days, and up to **10 years** with the add-on. Verify for your own tenant before relying on it.',
         exportHow: [
             'Purview portal → Audit → New search → set date range, users and activities → run → **Export** → CSV.',
             'Or PowerShell: `Search-UnifiedAuditLog -StartDate … -EndDate … -UserIds … -ResultSize 5000`, paged.',
             'Or the Office 365 Management Activity API for continuous collection.',
         ],
         gotchas: [
-            '**`MailItemsAccessed` is the one that answers "did they actually read the mail?"** Since the 2023 expanded-logging rollout it is part of Audit **Standard**, and it is on by default for mailboxes licensed **E3 or E5**. A great many runbooks still say "E5 only" and send responders away from their single best piece of evidence — go and look before you conclude you cannot.',
+            '**`MailItemsAccessed` is the one that answers "did they actually read the mail?"** Since the 2023 expanded-logging rollout it is part of Audit **Standard**, and it is on by default for mailboxes licensed **E3 or E5**. A great many runbooks still say "E5 only" and send responders away from their single best piece of evidence. Go and look before you conclude you cannot.',
             'Only the *intelligent insight* properties on it (the sensitivity label of the mail that was read) still require Audit (Premium).',
             'Everything useful is inside the `AuditData` JSON column. A spreadsheet is close to useless for this; the tool on this site unpacks it.',
             'Auditing must have been switched on **before** the incident. Check `Get-AdminAuditLogConfig` and per-mailbox audit settings.',
@@ -121,13 +121,13 @@ window.BL_LOG_SOURCES = [
             'The resource path actually called, so you can see enumeration and bulk collection.',
         ],
         fields: 'Timestamp · request method and URI · response status · UPN or service principal · app ID · IP · user agent · token issued-at time.',
-        retention: 'Only what you export, and the log category is **P1/P2 only**. There is no portal history — you must have configured a diagnostic setting to Log Analytics, storage or an event hub in advance.',
+        retention: 'Only what you export, and the log category is **P1/P2 only**. There is no portal history. You must have configured a diagnostic setting to Log Analytics, storage or an event hub in advance.',
         exportHow: [
             'Entra admin centre → Diagnostic settings → add `MicrosoftGraphActivityLogs`. Do this **now**, before you need it.',
             'Then query `MicrosoftGraphActivityLogs` in Log Analytics.',
         ],
         gotchas: [
-            'Nobody enables this until their first incident. If it is off, turn it on today — it is the only log that shows what a stolen application credential actually did.',
+            'Nobody enables this until their first incident. If it is off, turn it on today. It is the only log that shows what a stolen application credential actually did.',
         ],
     },
     {
@@ -137,8 +137,8 @@ window.BL_LOG_SOURCES = [
         what: 'Microsoft’s own risk detections: anonymous IP, unfamiliar sign-in properties, malware-linked IP, leaked credentials, token anomalies, suspicious inbox manipulation rules.',
         holds: [
             'Risky users, risky sign-ins, risky service principals, and the specific detection that fired.',
-            '**Leaked credentials** — Microsoft found that password in a dump.',
-            '**Anomalous token / token issuer anomaly** — genuinely useful for AiTM and token replay.',
+            '**Leaked credentials**: Microsoft found that password in a dump.',
+            '**Anomalous token / token issuer anomaly**: genuinely useful for AiTM and token replay.',
         ],
         fields: 'Detection type · risk level · risk state · detection timing (real-time or offline) · linked sign-in.',
         retention: 'Risky sign-ins: 7 days on Free, 30 days on P1, **90 days on P2**. Risky users are kept until the risk is remediated. Export to keep the rest.',
@@ -158,11 +158,11 @@ window.BL_LOG_SOURCES = [
         glyph: '🛰',
         what: 'The tables that connect the message to the click to the endpoint to the identity. Where you prove delivery and interaction rather than infer it.',
         holds: [
-            '`EmailEvents`, `EmailUrlInfo`, `EmailAttachmentInfo` — what was delivered, to whom, and what happened to it.',
-            '`UrlClickEvents` — **who actually clicked**, including whether they clicked through a warning page.',
-            '`IdentityLogonEvents`, `IdentityDirectoryEvents` — on-prem AD activity via Defender for Identity.',
-            '`CloudAppEvents` — Defender for Cloud Apps activity, including mailbox rule creation.',
-            '`DeviceProcessEvents`, `DeviceNetworkEvents`, `DeviceFileEvents` — endpoint behaviour.',
+            '`EmailEvents`, `EmailUrlInfo`, `EmailAttachmentInfo`. What was delivered, to whom, and what happened to it.',
+            '`UrlClickEvents`: **who actually clicked**, including whether they clicked through a warning page.',
+            '`IdentityLogonEvents`, `IdentityDirectoryEvents`, on-prem AD activity via Defender for Identity.',
+            '`CloudAppEvents`: Defender for Cloud Apps activity, including mailbox rule creation.',
+            '`DeviceProcessEvents`, `DeviceNetworkEvents`, `DeviceFileEvents`: endpoint behaviour.',
         ],
         fields: 'Varies per table. All are joinable on `NetworkMessageId`, `AccountUpn`, `DeviceId` and `ReportId`.',
         retention: '30 days of advanced hunting data by default.',
@@ -179,7 +179,7 @@ window.BL_LOG_SOURCES = [
         what: 'Mail flow: what was sent from the mailbox while the attacker held it, and who received it.',
         holds: ['Sender, recipients, subject, status, connector and IP for each message.'],
         fields: 'date_time · sender_address · recipient_address · subject · status · from_ip · to_ip · size.',
-        retention: 'Around 10 days of detailed trace, up to 90 days of summary reporting. **Shorter than everything else — pull it first.**',
+        retention: 'Around 10 days of detailed trace, up to 90 days of summary reporting. **Shorter than everything else. Pull it first.**',
         exportHow: ['Exchange admin centre → Mail flow → Message trace, or `Get-MessageTrace` / `Start-HistoricalSearch`.'],
         gotchas: [
             'This is the log most often lost to retention while the team is still deciding who owns the incident. Export it on day one, every time.',
@@ -192,7 +192,7 @@ window.BL_LOG_SOURCES = [
         glyph: '🏛',
         what: 'If the tenant is hybrid, a cloud incident may have started on-premises or be heading there. Domain controller security logs are a separate evidence stream with separate retention.',
         holds: [
-            'Domain controller security event logs — 4624/4625 logons, 4662 replication, 4768/4769 Kerberos, 4728/4732 group changes, 5136 directory changes.',
+            'Domain controller security event logs: 4624/4625 logons, 4662 replication, 4768/4769 Kerberos, 4728/4732 group changes, 5136 directory changes.',
             'Sysmon on Tier 0 for LSASS access and process creation.',
         ],
         fields: 'Standard Windows event schema.',
@@ -223,7 +223,7 @@ window.BL_AUDIT_OPS = [
             'How many other tenants have consented to it? A near-zero count on a professional-looking app is a strong signal.',
         ],
         actions: [
-            'Revoke the grant and disable the service principal — do not simply reset the user’s password, which does nothing here.',
+            'Revoke the grant and disable the service principal. Do not simply reset the user’s password, which does nothing here.',
             'Revoke the service principal’s refresh tokens as well.',
             'Read the Graph activity logs for that principal to establish what it actually read.',
             'Restrict user consent tenant-wide and enable the admin consent workflow.',
@@ -241,11 +241,11 @@ window.BL_AUDIT_OPS = [
         check: [
             'Who created it, from which IP, and does that person normally create applications?',
             'Was it created **minutes after** a suspicious sign-in? That sequence is the finding, more than the event itself.',
-            'What happened next — credentials added, consent granted, owner added? Those three usually follow within minutes.',
+            'What happened next: credentials added, consent granted, owner added? Those three usually follow within minutes.',
             'Innocuous names are deliberate. "Test App", "Microsoft Office 365", "Mail Backup" and "PDF Viewer" are all real examples from real intrusions.',
         ],
         actions: [
-            'If unexplained: revoke consent, disable the service principal, then delete it — in that order — preserving the object details first.',
+            'If unexplained: revoke consent, disable the service principal, then delete it (in that order) preserving the object details first.',
             'Search for sibling applications created in the same window or sharing a reply URL or certificate thumbprint.',
             'Restrict who may register applications; the default allows everyone.',
         ],
@@ -258,16 +258,16 @@ window.BL_AUDIT_OPS = [
         cat: 'apps',
         sev: 'critical',
         src: 'entra',
-        means: 'A secret or certificate was attached to an application. The attacker can now authenticate **as that application** — no user, no MFA, no Conditional Access by default, and nothing a password reset can touch. This is the quietest durable access in Microsoft 365.',
+        means: 'A secret or certificate was attached to an application. The attacker can now authenticate **as that application**: no user, no MFA, no Conditional Access by default, and nothing a password reset can touch. This is the quietest durable access in Microsoft 365.',
         check: [
             'Which application, and what permissions does it already hold? A credential on an app with `Mail.Read` is tenant-wide mailbox access.',
             'What is the credential’s expiry? A secret valid for years was not created by your change process.',
             'Was a **federated credential** added instead? Those store no secret at all and are correspondingly harder to notice.',
-            'Check `AADServicePrincipalSignInLogs` for that app ID afterwards — that is where the use shows up, and it is a table most teams never open.',
+            'Check `AADServicePrincipalSignInLogs` for that app ID afterwards. That is where the use shows up, and it is a table most teams never open.',
         ],
         actions: [
             'Remove that specific credential rather than deleting a legitimate application, and preserve the object.',
-            'Revoke the service principal’s refresh tokens — removing a secret stops new tokens, not issued ones.',
+            'Revoke the service principal’s refresh tokens. Removing a secret stops new tokens, not issued ones.',
             'Remove any owner added around the same time, or they will simply add another credential tomorrow.',
             'Review every application for long-lived secrets and absent owners while you are in there.',
         ],
@@ -296,7 +296,7 @@ window.BL_AUDIT_OPS = [
         cat: 'apps',
         sev: 'critical',
         src: 'entra',
-        means: 'An **application permission** was granted — the kind that needs no signed-in user and applies tenant-wide. `Mail.Read` here means every mailbox, not one.',
+        means: 'An **application permission** was granted. The kind that needs no signed-in user and applies tenant-wide. `Mail.Read` here means every mailbox, not one.',
         check: [
             'Which permission, and to which application?',
             '`RoleManagement.ReadWrite.Directory` and `AppRoleAssignment.ReadWrite.All` are escalation to Global Administrator. Treat either as a tenant compromise.',
@@ -324,7 +324,7 @@ window.BL_AUDIT_OPS = [
         actions: [
             'Remove the assignment if unexplained, and treat the actor as compromised.',
             'Revoke sessions and tokens for both the actor and the target.',
-            'Work the full Entra persistence sweep — a role assignment is rarely the only thing they did.',
+            'Work the full Entra persistence sweep. A role assignment is rarely the only thing they did.',
         ],
         link: '#/play/pro-entra-admin',
     },
@@ -333,7 +333,7 @@ window.BL_AUDIT_OPS = [
         cat: 'roles',
         sev: 'critical',
         src: 'entra',
-        means: 'A PIM **eligible** assignment. The account is not currently privileged, so a review of active administrators will not find it — but it can self-elevate whenever it likes. Attackers prefer this precisely because it is quieter.',
+        means: 'A PIM **eligible** assignment. The account is not currently privileged, so a review of active administrators will not find it, but it can self-elevate whenever it likes. Attackers prefer this precisely because it is quieter.',
         check: [
             'Always check eligibility alongside active assignments. A tenant that "looks clean" often is not.',
             'Was the PIM activation requirement weakened at the same time (approval removed, MFA not required)?',
@@ -350,7 +350,7 @@ window.BL_AUDIT_OPS = [
         cat: 'roles',
         sev: 'high',
         src: 'entra',
-        means: 'The rules for activating a privileged role were changed — removing approval, removing the MFA requirement, or extending the maximum duration. It makes future escalation silent.',
+        means: 'The rules for activating a privileged role were changed: removing approval, removing the MFA requirement, or extending the maximum duration. It makes future escalation silent.',
         check: ['Compare against your documented PIM configuration. Any relaxation is suspicious.'],
         actions: ['Restore the settings, then check who has activated the role since the change.'],
         link: '#/play/pro-entra-persistence',
@@ -370,10 +370,10 @@ window.BL_AUDIT_OPS = [
             'Only Global Administrator, Hybrid Identity Administrator and External Identity Provider Administrator can do this. That account is compromised.',
         ],
         actions: [
-            'Remove any federated domain you did not deliberately create — immediately.',
+            'Remove any federated domain you did not deliberately create: immediately.',
             'If ADFS is involved, rotate token-signing and token-decrypting certificates **twice**, plus the DKM master key.',
             'Revoke refresh tokens tenant-wide.',
-            'For the rest of this incident, treat "MFA was satisfied" as meaningless — the assertion can claim it.',
+            'For the rest of this incident, treat "MFA was satisfied" as meaningless. The assertion can claim it.',
         ],
         link: '#/play/pro-entra-federation',
     },
@@ -396,7 +396,7 @@ window.BL_AUDIT_OPS = [
         cat: 'policy',
         sev: 'critical',
         src: 'entra',
-        means: 'The cloud perimeter was edited. Attackers rarely delete a policy — deletion is noticed. They add an exclusion, switch it to report-only, or scope it away from themselves.',
+        means: 'The cloud perimeter was edited. Attackers rarely delete a policy. Deletion is noticed. They add an exclusion, switch it to report-only, or scope it away from themselves.',
         check: [
             'Diff the old and new values in `modifiedProperties`. The change is usually one added exclusion.',
             'Was a policy moved to **report-only**? Report-only enforces nothing.',
@@ -425,7 +425,7 @@ window.BL_AUDIT_OPS = [
         cat: 'policy',
         sev: 'critical',
         src: 'entra',
-        means: 'Tenant-wide defaults changed — who may consent to applications, who may register applications, who may invite guests, whether users can create tenants. Relaxing consent settings re-opens the entire consent-phishing attack class.',
+        means: 'Tenant-wide defaults changed. Who may consent to applications, who may register applications, who may invite guests, whether users can create tenants. Relaxing consent settings re-opens the entire consent-phishing attack class.',
         check: ['Compare against your documented baseline. Look specifically at user consent settings and application registration permissions.'],
         actions: ['Restore the restrictive settings and find the actor.'],
         link: '#/play/pro-entra-persistence',
@@ -460,10 +460,10 @@ window.BL_AUDIT_OPS = [
         cat: 'auth',
         sev: 'high',
         src: 'entra',
-        means: 'A new authentication method was registered by the user. Immediately after an atypical sign-in, this means the account was **accessed**, not merely attempted — and the attacker has now made themselves permanent.',
+        means: 'A new authentication method was registered by the user. Immediately after an atypical sign-in, this means the account was **accessed**, not merely attempted, and the attacker has now made themselves permanent.',
         check: [
             'What was the sign-in that preceded it? Same IP as the user’s normal activity, or somewhere new?',
-            'What method — an authenticator app, a phone number, a FIDO key? A new phone number is the classic.',
+            'What method: an authenticator app, a phone number, a FIDO key? A new phone number is the classic.',
         ],
         actions: [
             'Remove the method, revoke sessions and tokens, reset the password, then re-enrol under supervision.',
@@ -481,12 +481,12 @@ window.BL_AUDIT_OPS = [
         check: [
             'Is there a ticket? Did the service desk verify identity, and how?',
             'Was a **Temporary Access Pass** issued? That is a time-limited passcode that bypasses existing methods entirely.',
-            'Did the target user actually ask? Ring them — on a number from the directory, not one from the ticket.',
+            'Did the target user actually ask? Ring them, on a number from the directory, not one from the ticket.',
         ],
         actions: [
             'If unverified: revoke sessions, reset again, remove attacker-registered methods, and re-enrol in person or over video.',
             'Treat the administrator account as compromised until the ticket is confirmed.',
-            'Harden the service desk identity-verification process — this is the control that actually fixes it.',
+            'Harden the service desk identity-verification process. This is the control that actually fixes it.',
         ],
         link: '#/play/pro-helpdesk',
     },
@@ -509,7 +509,7 @@ window.BL_AUDIT_OPS = [
         cat: 'devices',
         sev: 'high',
         src: 'entra',
-        means: 'A device object was created or claimed. Attackers register their own device to satisfy Conditional Access policies that require a compliant or joined device — turning your strongest control into their credential.',
+        means: 'A device object was created or claimed. Attackers register their own device to satisfy Conditional Access policies that require a compliant or joined device: turning your strongest control into their credential.',
         check: [
             'Does the device correspond to real hardware you issued? Check Intune enrolment and the join type.',
             'Was it registered from the same IP as a suspicious sign-in?',
@@ -529,14 +529,14 @@ window.BL_AUDIT_OPS = [
         cat: 'mailbox',
         sev: 'critical',
         src: 'ual',
-        means: 'A mailbox rule was created or changed. Rules exist to **hide the attacker’s own activity** — moving replies out of sight so the real user never notices a conversation happening in their name. Where you find one, look for a payment.',
+        means: 'A mailbox rule was created or changed. Rules exist to **hide the attacker’s own activity**: moving replies out of sight so the real user never notices a conversation happening in their name. Where you find one, look for a payment.',
         check: [
             'What does it do? `ForwardTo`, `RedirectTo`, `DeleteMessage`, or `MoveToFolder` targeting RSS Feeds, Archive, Conversation History or Deleted Items.',
             'What triggers it? Keywords like invoice, payment, bank, IBAN, remittance, wire, password, security.',
             'Rules named with a single character, a dot or a space are attacker convention.',
         ],
         actions: [
-            '**Screenshot or export the rule before deleting it** — the name, conditions and actions are the evidence.',
+            '**Screenshot or export the rule before deleting it**. The name, conditions and actions are the evidence.',
             'Read the target folder: that is the conversation the user never saw.',
             'Warn counterparties by phone using numbers held before the incident, and halt any payment discussed in those threads.',
             'Disable external auto-forwarding tenant-wide if it is not a business requirement.',
@@ -548,7 +548,7 @@ window.BL_AUDIT_OPS = [
         cat: 'mailbox',
         sev: 'high',
         src: 'ual',
-        means: 'Mailbox configuration changed. The parameters that matter are `ForwardingSmtpAddress`, `ForwardingAddress` and `DeliverToMailboxAndForward` — silent, permanent copying of mail to an external address.',
+        means: 'Mailbox configuration changed. The parameters that matter are `ForwardingSmtpAddress`, `ForwardingAddress` and `DeliverToMailboxAndForward`: silent, permanent copying of mail to an external address.',
         check: ['Inspect the `Parameters` array in `AuditData`. Forwarding to an external domain is the finding.'],
         actions: ['Remove the forwarding, then check every mailbox in the tenant for the same, not just this one.'],
         link: '#/play/pro-inbox-rules',
@@ -569,10 +569,10 @@ window.BL_AUDIT_OPS = [
         cat: 'mailbox',
         sev: 'high',
         src: 'ual',
-        means: 'Mail was actually read. **This is the event that answers the question everyone asks after a mailbox compromise** — did they read it, or only have the ability to. Since the 2023 expanded-logging rollout it is part of Audit **Standard** and on by default for E3 and E5 mailboxes; only the sensitivity-label insight still needs Premium.',
+        means: 'Mail was actually read. **This is the event that answers the question everyone asks after a mailbox compromise**. Did they read it, or only have the ability to. Since the 2023 expanded-logging rollout it is part of Audit **Standard** and on by default for E3 and E5 mailboxes; only the sensitivity-label insight still needs Premium.',
         check: [
             '`MailAccessType` of `Bind` is individual messages, aggregated in two-minute windows with an `OperationCount`; `Sync` means a client synchronised whole folders.',
-            '**If a sync happened in the attacker’s context, assume the entire folder is compromised** — they could then read it offline, where nothing is audited.',
+            '**If a sync happened in the attacker’s context, assume the entire folder is compromised**. They could then read it offline, where nothing is audited.',
             'Sync is only recorded for desktop Outlook on Windows or Mac. Other clients produce bind records only.',
             'Use **`SessionId`** to separate attacker activity from the real user’s in the same mailbox. It is the single most useful field here and almost nobody uses it.',
             'Correlate `ClientIPAddress` and `ClientInfoString` against the known-bad session.',
@@ -581,7 +581,7 @@ window.BL_AUDIT_OPS = [
         actions: [
             'Enumerate the folders and, for bind operations, the `InternetMessageId` values accessed. That list drives the data-breach assessment.',
             'Check the messages behind those IDs for personal or regulated data before deciding on notification.',
-            'If mailbox auditing was off, or the mailbox is below E3, say so explicitly — you cannot prove non-access.',
+            'If mailbox auditing was off, or the mailbox is below E3, say so explicitly. You cannot prove non-access.',
         ],
         link: '#/play/pro-log-collection',
     },
@@ -592,7 +592,7 @@ window.BL_AUDIT_OPS = [
         sev: 'high',
         src: 'ual',
         means: 'Mail was sent from the mailbox. During a compromise this is usually onward phishing to contacts and suppliers, or a fraudulent payment instruction.',
-        check: ['Pull message trace for the same window — it expires in about 10 days, so do it first.'],
+        check: ['Pull message trace for the same window: it expires in about 10 days, so do it first.'],
         actions: [
             'Identify every recipient and warn them, quickly, before the message lands.',
             'Purge the sent messages from recipient mailboxes where they are internal.',
@@ -605,7 +605,7 @@ window.BL_AUDIT_OPS = [
         cat: 'mailbox',
         sev: 'medium',
         src: 'ual',
-        means: 'Someone searched the mailbox or SharePoint. In an intrusion these queries are often the clearest statement of intent you will ever get — "password", "invoice", "wire transfer", "bank details", "confidential", "MFA".',
+        means: 'Someone searched the mailbox or SharePoint. In an intrusion these queries are often the clearest statement of intent you will ever get: "password", "invoice", "wire transfer", "bank details", "confidential", "MFA".',
         check: ['Read the actual query strings. They tell you what the adversary was after, which shapes the whole notification assessment.'],
         actions: ['Record the queries verbatim in the timeline and use them to prioritise what to check for exposure.'],
         link: '#/play/pro-log-collection',
@@ -618,7 +618,7 @@ window.BL_AUDIT_OPS = [
         cat: 'files',
         sev: 'high',
         src: 'ual',
-        means: 'Files were taken from SharePoint or OneDrive. `FileSyncDownloadedFull` means a client synchronised an entire library — that is bulk collection, not browsing.',
+        means: 'Files were taken from SharePoint or OneDrive. `FileSyncDownloadedFull` means a client synchronised an entire library. That is bulk collection, not browsing.',
         check: ['Volume and rate. A hundred downloads in two minutes is exfiltration; five over an afternoon is work.'],
         actions: ['Enumerate what was taken, assess it for personal or regulated data, and start the notification clock.'],
         link: '#/play/pro-log-collection',
@@ -629,7 +629,7 @@ window.BL_AUDIT_OPS = [
         cat: 'files',
         sev: 'high',
         src: 'ual',
-        means: 'Content was shared outward. An anonymous link is a URL that works for anyone who has it, with no authentication — a very quiet exfiltration route that survives losing the account.',
+        means: 'Content was shared outward. An anonymous link is a URL that works for anyone who has it, with no authentication. A very quiet exfiltration route that survives losing the account.',
         check: ['What was shared, with whom, and does the link still work?'],
         actions: ['Revoke the links, then review external sharing settings for the whole tenant.'],
         link: '#/play/pro-log-collection',
@@ -667,7 +667,7 @@ window.BL_AUDIT_OPS = [
         cat: 'org',
         sev: 'critical',
         src: 'ual',
-        means: 'Auditing itself was reconfigured. Disabling audit logging or adding a mailbox audit bypass is an attempt to blind the investigation — it is never routine and it means someone knows what they are doing.',
+        means: 'Auditing itself was reconfigured. Disabling audit logging or adding a mailbox audit bypass is an attempt to blind the investigation. It is never routine and it means someone knows what they are doing.',
         check: ['What exactly changed, and does anything else in the timeline sit inside the resulting blind spot?'],
         actions: [
             'Restore auditing immediately and treat everything after the change as unlogged rather than clean.',
@@ -692,7 +692,7 @@ window.BL_AUDIT_OPS = [
         cat: 'org',
         sev: 'medium',
         src: 'ual',
-        means: 'A Power Automate flow was created. A flow can forward every incoming message, copy files to external storage, or auto-approve requests — persistence that lives entirely outside the places people look.',
+        means: 'A Power Automate flow was created. A flow can forward every incoming message, copy files to external storage, or auto-approve requests. Persistence that lives entirely outside the places people look.',
         check: ['What triggers it and what does it do? Where does the data go?'],
         actions: ['Disable the flow and review the connections it uses.'],
         link: '#/play/pro-entra-persistence',

@@ -2,135 +2,131 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Breachlight overflow check</title>
-    <!--
-      Dev harness. Loads each route in a 360px-wide iframe and reports
-      scrollWidth vs clientWidth, plus the widest offending elements.
-      Same origin, so the measurement is real rather than inferred.
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>Breachlight overflow check</title>
+ <!--
+ Dev harness. Loads each route in a 360px-wide iframe and reports
+ scrollWidth vs clientWidth, plus the widest offending elements.
+ Same origin, so the measurement is real rather than inferred.
 
-        powershell -File logscope/run-selftest.ps1 -Url http://127.0.0.1:8877/overflow.html
+ powershell -File logscope/run-selftest.ps1 -Url http://127.0.0.1:8877/overflow.html
 
-      Not linked from the site and not in the service worker shell.
-    -->
-    <style>
-        body {
-            font: 14px/1.5 system-ui, sans-serif;
-            background: #0a0c12;
-            color: #e8edf7;
-            padding: 1.2rem;
-        }
+ Not linked from the site and not in the service worker shell.
+ -->
+ <style>
+ body {
+ font: 14px/1.5 system-ui, sans-serif;
+ background: #0a0c12;
+ color: #e8edf7;
+ padding: 1.2rem;
+ }
 
-        li {
-            font-family: ui-monospace, monospace;
-            font-size: .82rem;
-            margin: .15rem 0;
-        }
+ li {
+ font-family: ui-monospace, monospace;
+ font-size: .82rem;
+ margin: .15rem 0;
+ }
 
-        .pass {
-            color: #5fd39b;
-        }
+ .pass {
+ color: #5fd39b;
+ }
 
-        .fail {
-            color: #ff6b6b;
-            font-weight: 700;
-        }
+ .fail {
+ color: #ff6b6b;
+ font-weight: 700;
+ }
 
-        iframe {
-            height: 720px;
-            border: 0;
-            position: absolute;
-            left: -10000px;
-        }
-    </style>
+ iframe {
+ height: 720px;
+ border: 0;
+ position: absolute;
+ left: -10000px;
+ }
+ </style>
 </head>
 
 <body>
-    <h1>Overflow check</h1>
-    <p id="verdict">running…</p>
-    <ul id="results"></ul>
+ <h1>Overflow check</h1>
+ <p id="verdict">running…</p>
+ <ul id="results"></ul>
 
-    <script>
-        (function () {
-            'use strict';
-            var WIDTH = parseInt((location.search.match(/[?&]w=(\d+)/) || [])[1], 10) || 360;
-            document.querySelector('h1').textContent = 'Overflow check @ ' + WIDTH + 'px';
-            var ROUTES = [
-                'logscope/',
-                '#/', '#/triage', '#/signs', '#/plays', '#/terms', '#/defend', '#/about',
-                '#/t/pro-phish', '#/t/pro-dir', '#/t/pro-rebuild', '#/t/start', '#/t/verify',
-                '#/play/pro-log-collection', '#/play/pro-audit-triage', '#/play/pro-device-code',
-                '#/play/pro-helpdesk', '#/play/pro-device-registered', '#/play/pro-ad-tier0',
-                '#/play/pro-ad-golden', '#/play/pro-entra-app', '#/play/pro-user-clicked',
-                '#/play/entered-password', '#/play/money-transfer', '#/play/gift-card-paid',
-                '#/play/phone-malware', '#/play/computer-malware',
-                '#/defend/ad-hardening', '#/defend/entra-hardening', '#/defend/virtual-cards',
-                '#/q/device%20code'
-            ];
+ <script>
+ (function () {
+ 'use strict';
+ var WIDTH = parseInt((location.search.match(/[?&]w=(\d+)/) || [])[1], 10) || 360;
+ document.querySelector('h1').textContent = 'Overflow check @ ' + WIDTH + 'px';
+ var ROUTES = [
+ 'logscope/',
+ '#/', '#/triage', '#/signs', '#/plays', '#/terms', '#/defend', '#/about',
+ '#/t/pro-phish', '#/t/pro-dir', '#/t/pro-rebuild', '#/t/start', '#/t/verify',
+ '#/play/pro-log-collection', '#/play/pro-audit-triage', '#/play/pro-device-code',
+ '#/play/pro-helpdesk', '#/play/pro-device-registered', '#/play/pro-ad-tier0',
+ '#/play/pro-ad-golden', '#/play/pro-entra-app', '#/play/pro-user-clicked',
+ '#/play/entered-password', '#/play/money-transfer', '#/play/gift-card-paid',
+ '#/play/phone-malware', '#/play/computer-malware',
+ '#/defend/ad-hardening', '#/defend/entra-hardening', '#/defend/virtual-cards',
+ '#/q/device%20code'
+ ];
 
-            var results = [], i = 0;
-            var list = document.getElementById('results');
+ var results = [], i = 0;
+ var list = document.getElementById('results');
 
-            function finish() {
-                var bad = results.filter(function (r) { return r.over > 2; });
-                var v = document.getElementById('verdict');
-                v.textContent = bad.length
-                    ? bad.length + ' of ' + results.length + ' routes OVERFLOW at ' + WIDTH + 'px'
-                    : 'clean — no horizontal overflow on ' + results.length + ' routes at ' + WIDTH + 'px';
-                v.className = bad.length ? 'fail' : 'pass';
-            }
+ function finish() {
+ var bad = results.filter(function (r) { return r.over > 2; });
+ var v = document.getElementById('verdict');
+ v.textContent = bad.length
+ ? bad.length + ' of ' + results.length + ' routes OVERFLOW at ' + WIDTH + 'px'
+ : 'clean, no horizontal overflow on ' + results.length + ' routes at ' + WIDTH + 'px';
+ v.className = bad.length ? 'fail' : 'pass';
+ }
 
-            function next() {
-                if (i >= ROUTES.length) { finish(); return; }
-                var route = ROUTES[i++];
-                var url = route.indexOf('#') === 0 ? 'index.html' + route : route;
-                var f = document.createElement('iframe');
-                f.style.width = WIDTH + 'px';
-                f.src = url;
-                document.body.appendChild(f);
+ function next() {
+ if (i >= ROUTES.length) { finish(); return; }
+ var route = ROUTES[i++];
+ var url = route.indexOf('#') === 0 ? 'index.html' + route : route;
+ var f = document.createElement('iframe');
+ f.style.width = WIDTH + 'px';
+ f.src = url;
+ document.body.appendChild(f);
 
-                var done = false;
-                var check = function () {
-                    if (done) return;
-                    done = true;
-                    var over = 0, widest = '';
-                    try {
-                        var d = f.contentDocument;
-                        over = d.documentElement.scrollWidth - d.documentElement.clientWidth;
-                        if (over > 2) {
-                            var vw = f.contentWindow.innerWidth;
-                            var offenders = [].slice.call(d.querySelectorAll('body *'))
-                                .map(function (e) {
-                                    var r = e.getBoundingClientRect();
-                                    return { e: e, w: Math.round(r.width), right: Math.round(r.right) };
-                                })
-                                .filter(function (x) { return x.right > vw + 1 || x.w > vw + 1; })
-                                .sort(function (a, b) { return b.right - a.right; })
-                                .slice(0, 3);
-                            widest = offenders.map(function (x) {
-                                return x.e.tagName.toLowerCase() +
-                                    (x.e.className && typeof x.e.className === 'string' ? '.' + x.e.className.split(' ').join('.') : '') +
-                                    ' w=' + x.w + ' right=' + x.right;
-                            }).join('  |  ');
-                        }
-                    } catch (err) { widest = 'error: ' + err.message; }
+ var done = false;
+ var check = function () {
+ if (done) return;
+ done = true;
+ var over = 0, widest = '';
+ try {
+ var d = f.contentDocument;
+ over = d.documentElement.scrollWidth - d.documentElement.clientWidth;
+ if (over > 2) {
+ var vw = f.contentWindow.innerWidth;
+ var offenders = [].slice.call(d.querySelectorAll('body *')).map(function (e) {
+ var r = e.getBoundingClientRect();
+ return { e: e, w: Math.round(r.width), right: Math.round(r.right) };
+ }).filter(function (x) { return x.right > vw + 1 || x.w > vw + 1; }).sort(function (a, b) { return b.right - a.right; }).slice(0, 3);
+ widest = offenders.map(function (x) {
+ return x.e.tagName.toLowerCase() +
+ (x.e.className && typeof x.e.className === 'string' ? '.' + x.e.className.split(' ').join('.'): '') +
+ ' w=' + x.w + ' right=' + x.right;
+ }).join(' | ');
+ }
+ } catch (err) { widest = 'error: ' + err.message; }
 
-                    results.push({ route: route, over: over, widest: widest });
-                    var li = document.createElement('li');
-                    li.className = over > 2 ? 'fail' : 'pass';
-                    li.textContent = (over > 2 ? '✗ ' : '✓ ') + route + '  over=' + over + (widest ? '   ' + widest : '');
-                    list.appendChild(li);
-                    f.remove();
-                    setTimeout(next, 30);
-                };
+ results.push({ route: route, over: over, widest: widest });
+ var li = document.createElement('li');
+ li.className = over > 2 ? 'fail' : 'pass';
+ li.textContent = (over > 2 ? '✗ ' : '✓ ') + route + ' over=' + over + (widest ? ' ' + widest : '');
+ list.appendChild(li);
+ f.remove();
+ setTimeout(next, 30);
+ };
 
-                f.onload = function () { setTimeout(check, 120); };
-                setTimeout(check, 2500);   // safety net
-            }
-            next();
-        })();
-    </script>
+ f.onload = function () { setTimeout(check, 120); };
+ setTimeout(check, 2500); // safety net
+ }
+ next();
+ })();
+ </script>
 </body>
 
 </html>

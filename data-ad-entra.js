@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Breachlight — data-ad-entra.js
+ Breachlight: data-ad-entra.js
    --------------------------------------------------------------------------
    The directory layer: on-premises Active Directory Domain Services and
    Microsoft Entra ID. Glossary terms and hardening baselines.
@@ -10,7 +10,7 @@
 
    Accuracy notes for future editors
      • Object identifiers, event IDs and attribute names are load-bearing.
-       If you change one, verify it against current Microsoft documentation —
+ If you change one, verify it against current Microsoft documentation, 
        a wrong GUID in a detection rule is worse than no rule at all.
      • Where Microsoft has renamed something (Azure AD → Entra ID, AAD Connect
        → Entra Connect, AzureADPreview/MSOnline → Microsoft Graph PowerShell),
@@ -24,7 +24,7 @@ window.BL_CATS.push({
     id: 'directory',
     title: 'Active Directory & Entra ID',
     glyph: '🏛',
-    blurb: 'The corporate identity plane — where a single mistake becomes every account at once.',
+    blurb: 'The corporate identity plane. Where a single mistake becomes every account at once.',
 });
 
 window.BL_DEFEND_CATS.unshift({
@@ -37,7 +37,7 @@ window.BL_DEFEND_CATS.unshift({
 
 window.BL_TERMS.push(
 
-    /* ================================================= AD — the foundations = */
+ /* ================================================= AD: the foundations = */
     {
         id: 'ad-ds',
         term: 'Active Directory Domain Services',
@@ -106,7 +106,7 @@ window.BL_TERMS.push(
         glyph: '🔁',
         cat: 'directory',
         aud: 'pro',
-        what: 'Asking a domain controller to replicate password data, while pretending to be a domain controller. No code runs on the DC and nothing is dropped to disk — it is a legitimate protocol used illegitimately, which is exactly why it is popular.',
+        what: 'Asking a domain controller to replicate password data, while pretending to be a domain controller. No code runs on the DC and nothing is dropped to disk. It is a legitimate protocol used illegitimately, which is exactly why it is popular.',
         spot: [
             'Requires the replication rights `DS-Replication-Get-Changes` and `DS-Replication-Get-Changes-All`, which Domain Admins, Enterprise Admins and (by design) the Entra Connect sync account hold.',
             'Detect with **Event 4662** on a DC where the properties field contains the replication GUIDs `1131f6aa-9c07-11d1-f79f-00c04fc2dcd2` (Get-Changes) or `1131f6ad-9c07-11d1-f79f-00c04fc2dcd2` (Get-Changes-All), and the caller is **not** a domain controller or a known sync account.',
@@ -121,11 +121,11 @@ window.BL_TERMS.push(
         glyph: '👥',
         cat: 'directory',
         aud: 'pro',
-        what: 'Temporarily registering a rogue domain controller so that malicious changes arrive through normal replication — and therefore appear in the directory without ever producing a change event on a real DC.',
+        what: 'Temporarily registering a rogue domain controller so that malicious changes arrive through normal replication, and therefore appear in the directory without ever producing a change event on a real DC.',
         spot: [
             'Look for creation or modification of `nTDSDSA` objects in the Configuration partition, and for SPN changes adding `GC/` or the DRS class to a non-DC computer.',
             'Directory Service Changes auditing (Events 5136 / 5137 / 5141) and Configuration-partition monitoring are the practical detections.',
-            'It is used to plant persistence quietly — a SIDHistory value, an ACL, a group membership — that will survive a superficial clean-up.',
+            'It is used to plant persistence quietly (a SIDHistory value, an ACL, a group membership) that will survive a superficial clean-up.',
         ],
         eg: 'An attacker adds SIDHistory of Domain Admins onto a low-privileged account via replication, so the account is effectively a domain admin without ever appearing in the group.',
         keys: 'dcshadow rogue domain controller ntdsdsa replication persistence sidhistory stealth ad change',
@@ -186,7 +186,7 @@ window.BL_TERMS.push(
         spot: [
             'Find them: accounts where `userAccountControl` contains `DONT_REQUIRE_PREAUTH` (`0x400000`).',
             'Detect with **Event 4768** where the pre-authentication type is `0`.',
-            'This needs **no** valid domain account to exploit — an attacker with only network access can do it.',
+            'This needs **no** valid domain account to exploit. An attacker with only network access can do it.',
             'There is almost never a legitimate reason for this flag today. Clear it, and audit for it monthly.',
         ],
         eg: 'A flag set in 2011 for an ancient Unix integration, still on a service account with a weak password, cracked from the guest wifi.',
@@ -216,7 +216,7 @@ window.BL_TERMS.push(
         glyph: '🎭',
         cat: 'directory',
         aud: 'pro',
-        what: 'A mechanism letting a service act on behalf of a user. Misconfigured, it becomes a direct path to domain admin — and the resource-based variant can be configured by anyone who can write to a computer object.',
+        what: 'A mechanism letting a service act on behalf of a user. Misconfigured, it becomes a direct path to domain admin, and the resource-based variant can be configured by anyone who can write to a computer object.',
         spot: [
             '**Unconstrained** (`TRUSTED_FOR_DELEGATION`): the server caches the full TGT of every user who connects. Compromise it, then coerce a domain controller to authenticate to it, and you have the DC’s TGT. Domain controllers have this by design; **nothing else should**.',
             '**Constrained** (`msDS-AllowedToDelegateTo`), especially with protocol transition (`TRUSTED_TO_AUTH_FOR_DELEGATION`), allows impersonating arbitrary users to the listed services.',
@@ -233,7 +233,7 @@ window.BL_TERMS.push(
         glyph: '🧲',
         cat: 'directory',
         aud: 'pro',
-        what: 'Forcing a Windows machine — usually a domain controller — to authenticate to a server the attacker controls, by calling a built-in RPC interface. The authentication is then relayed somewhere useful.',
+        what: 'Forcing a Windows machine (usually a domain controller) to authenticate to a server the attacker controls, by calling a built-in RPC interface. The authentication is then relayed somewhere useful.',
         spot: [
             'Named after the interface abused: **PrinterBug** (MS-RPRN), **PetitPotam** (MS-EFSR), **DFSCoerce** (MS-DFSNM), **ShadowCoerce** (MS-FSRVP).',
             'Almost always the first half of a two-part attack: coerce, then **relay to AD CS** (ESC8) or to LDAP to configure RBCD.',
@@ -249,11 +249,11 @@ window.BL_TERMS.push(
         glyph: '📜',
         cat: 'directory',
         aud: 'pro',
-        what: 'Active Directory Certificate Services issues certificates that can be used to authenticate. A misconfigured template lets a low-privileged user request a certificate *for somebody else* — usually a domain admin — and certificates survive password resets, which makes them superb persistence.',
+        what: 'Active Directory Certificate Services issues certificates that can be used to authenticate. A misconfigured template lets a low-privileged user request a certificate *for somebody else* (usually a domain admin) and certificates survive password resets, which makes them superb persistence.',
         spot: [
-            '**ESC1** — template allows the requester to supply the subject (`ENROLLEE_SUPPLIES_SUBJECT`), has a client-authentication EKU, and permits enrolment by ordinary users. The classic and still the most common.',
+            '**ESC1**: template allows the requester to supply the subject (`ENROLLEE_SUPPLIES_SUBJECT`), has a client-authentication EKU, and permits enrolment by ordinary users. The classic and still the most common.',
             '**ESC2** any-purpose or no EKU · **ESC3** enrolment agent · **ESC4** writable template ACL · **ESC5** writable PKI object ACL · **ESC6** `EDITF_ATTRIBUTESUBJECTALTNAME2` on the CA · **ESC7** `ManageCA` / `ManageCertificates` · **ESC8** NTLM relay to web enrolment · **ESC9/ESC10** weak certificate-to-account mapping · **ESC11** RPC enrolment relay · **ESC13** issuance policy linked to a group.',
-            '**The numbering keeps growing** — newer entries cover `altSecurityIdentities` mapping abuse, application-policy abuse in V1 templates, and CAs with the security extension disabled. Do not treat any fixed list as complete: **audit with current tooling**, because the tool authors track this far more closely than any written list can.',
+            '**The numbering keeps growing**: newer entries cover `altSecurityIdentities` mapping abuse, application-policy abuse in V1 templates, and CAs with the security extension disabled. Do not treat any fixed list as complete: **audit with current tooling**, because the tool authors track this far more closely than any written list can.',
             'Certificates remain valid until they expire or are revoked. A password reset does nothing to them.',
         ],
         eg: 'A template published in 2018 for VPN certificates allows any domain user to specify the subject. An attacker enrols as the domain administrator and authenticates with the certificate that afternoon.',
@@ -268,7 +268,7 @@ window.BL_TERMS.push(
         what: 'Directory permissions granted years ago that quietly confer domain-admin-equivalent power. Nobody is in the Domain Admins group, and yet fifty accounts can become domain admin in one step.',
         spot: [
             'The dangerous rights: `GenericAll`, `GenericWrite`, `WriteDACL`, `WriteOwner`, `AllExtendedRights`, `ForceChangePassword`, `AddMember`, and write access to `msDS-KeyCredentialLink` (shadow credentials).',
-            'Attack paths are graph problems, not list problems. Use a graphing tool (BloodHound or equivalent) — a spreadsheet of group memberships will never find them.',
+            'Attack paths are graph problems, not list problems. Use a graphing tool (BloodHound or equivalent). A spreadsheet of group memberships will never find them.',
             '`adminCount = 1` on an object whose ACL no longer matches AdminSDHolder usually marks a former privileged account with stale, over-permissive rights.',
             'Check the ACL on the **domain root**, the **Domain Controllers OU**, **AdminSDHolder**, the **GPOs linked to Tier 0**, and the **certificate templates container**.',
         ],
@@ -281,12 +281,12 @@ window.BL_TERMS.push(
         glyph: '📋',
         cat: 'directory',
         aud: 'pro',
-        what: 'Group Policy runs code as SYSTEM on every machine it applies to. Write access to a GPO linked to a sensitive OU is therefore equivalent to administrative access on every machine in that OU — including domain controllers.',
+        what: 'Group Policy runs code as SYSTEM on every machine it applies to. Write access to a GPO linked to a sensitive OU is therefore equivalent to administrative access on every machine in that OU, including domain controllers.',
         spot: [
             'Detect changes to the `SYSVOL` policy files and to `gPCFileSysPath`, plus Event **5136** on `groupPolicyContainer` objects.',
             'Watch specifically for newly added immediate scheduled tasks, startup or logon scripts, and Restricted Groups changes.',
             'Audit who can edit the GPOs linked to the **Domain Controllers OU** and the **domain root**. It is usually more people than anyone expects.',
-            'Ransomware crews use GPO as the deployment mechanism of choice — one policy pushes the payload everywhere at once.',
+            'Ransomware crews use GPO as the deployment mechanism of choice: one policy pushes the payload everywhere at once.',
         ],
         eg: 'An attacker with write access to the Default Domain Policy adds an immediate scheduled task. Twenty minutes later, every domain-joined machine runs the payload as SYSTEM.',
         keys: 'gpo abuse group policy attack sysvol 5136 immediate scheduled task ransomware deployment gpo write access default domain policy',
@@ -297,7 +297,7 @@ window.BL_TERMS.push(
         glyph: '🧬',
         cat: 'directory',
         aud: 'pro',
-        what: 'An attribute created for domain migrations that carries a previous SID alongside the current one. Windows honours it for access checks — so writing a privileged SID into it makes an account privileged without any group membership to see.',
+        what: 'An attribute created for domain migrations that carries a previous SID alongside the current one. Windows honours it for access checks, so writing a privileged SID into it makes an account privileged without any group membership to see.',
         spot: [
             'Audit `sIDHistory` on every account. Outside an active migration the correct value is almost always empty.',
             'Especially check for well-known privileged RIDs: `-512` (Domain Admins), `-519` (Enterprise Admins), `-518` (Schema Admins).',
@@ -317,7 +317,7 @@ window.BL_TERMS.push(
         what: 'Gives every machine a different, randomly generated, automatically rotated local administrator password, stored in the directory and readable only by those explicitly permitted.',
         spot: [
             'Without it, one identical local admin password means one compromised laptop equals every laptop. This is still one of the most common findings in any assessment.',
-            '**Windows LAPS** is built into current Windows and supports Entra ID as well as AD — the legacy MSI-based version is retired.',
+            '**Windows LAPS** is built into current Windows and supports Entra ID as well as AD. The legacy MSI-based version is retired.',
             'Read access to the password attribute is itself privileged. Audit who holds `ms-Mcs-AdmPwd` / `msLAPS-Password` read rights.',
             'Enable password encryption and set the backup directory deliberately (AD or Entra), then verify rotation is actually happening.',
         ],
@@ -332,11 +332,11 @@ window.BL_TERMS.push(
         aud: 'pro',
         what: 'A built-in group that removes the weakest authentication behaviours for its members: no NTLM, no DES or RC4 Kerberos, no delegation, no credential caching, and a short ticket lifetime.',
         spot: [
-            'The correct home for every Tier 0 account — but it **will** break things that still rely on NTLM or RC4, so test before bulk-adding.',
+            'The correct home for every Tier 0 account, but it **will** break things that still rely on NTLM or RC4, so test before bulk-adding.',
             'Pair it with the **"Account is sensitive and cannot be delegated"** flag, which does not require the group.',
             'Members cannot log on offline with cached credentials. Never put a break-glass or a service account in it without thinking that through.',
         ],
-        eg: 'Adding domain admins to Protected Users stops their credentials being cached on a workstation at all — so a workstation compromise yields nothing.',
+        eg: 'Adding domain admins to Protected Users stops their credentials being cached on a workstation at all, so a workstation compromise yields nothing.',
         keys: 'protected users group tier 0 accounts no ntlm no rc4 no delegation credential caching sensitive cannot be delegated',
     },
 
@@ -351,7 +351,7 @@ window.BL_TERMS.push(
         what: 'Microsoft’s cloud identity service, and the front door to Microsoft 365, Azure and thousands of federated applications. It is reachable from the entire internet, which changes the threat model completely: there is no perimeter, only policy.',
         spot: [
             'Because it is internet-facing, **Conditional Access is the perimeter**. A gap in policy is a gap in the firewall.',
-            'It is not an AD DS in the cloud. There are no OUs, no GPOs, no Kerberos, and no forest boundary — but there are roles, applications, service principals and consent, which are where the real attack paths live.',
+            'It is not an AD DS in the cloud. There are no OUs, no GPOs, no Kerberos, and no forest boundary, but there are roles, applications, service principals and consent, which are where the real attack paths live.',
             'Default log retention is short (7 days without a licence, 30 with P1/P2). **Export to Log Analytics, Sentinel or a SIEM on day one**, because incidents are always older than you hoped.',
         ],
         eg: 'A tenant with perfect on-prem hygiene is compromised through a legacy app registration nobody had reviewed since 2019.',
@@ -365,14 +365,14 @@ window.BL_TERMS.push(
         aud: 'pro',
         what: 'Global Administrator is the obvious one, but several roles reach the same place in one or two steps. Treat the whole escalation-capable set as Tier 0, not just the crown.',
         spot: [
-            '**Global Administrator** — everything, and can elevate to Azure resource access via the "Access management for Azure resources" toggle, taking control of every subscription.',
-            '**Privileged Role Administrator** — can grant any role to anyone, including itself. Functionally equal to Global Admin.',
-            '**Privileged Authentication Administrator** — can reset credentials and MFA methods of *any* user, Global Admins included. A direct takeover path.',
-            '**Application Administrator / Cloud Application Administrator** — can add credentials to existing service principals. If any service principal holds high Graph permissions (`RoleManagement.ReadWrite.Directory`, `AppRoleAssignment.ReadWrite.All`), this is escalation to Global Admin.',
-            '**Hybrid Identity Administrator** — can configure federation, which is Golden SAML on a plate.',
-            '**Intune Administrator** — can push scripts to managed devices, i.e. code execution on endpoints including privileged ones.',
-            '**Directory Synchronization Accounts** — the Entra Connect service identity. Not for humans, and it is often the most over-trusted identity in the tenant.',
-            '**Groups Administrator / User Administrator** — dangerous where role-assignable groups exist.',
+            '**Global Administrator**. Everything, and can elevate to Azure resource access via the "Access management for Azure resources" toggle, taking control of every subscription.',
+            '**Privileged Role Administrator**: can grant any role to anyone, including itself. Functionally equal to Global Admin.',
+            '**Privileged Authentication Administrator**: can reset credentials and MFA methods of *any* user, Global Admins included. A direct takeover path.',
+            '**Application Administrator / Cloud Application Administrator**: can add credentials to existing service principals. If any service principal holds high Graph permissions (`RoleManagement.ReadWrite.Directory`, `AppRoleAssignment.ReadWrite.All`), this is escalation to Global Admin.',
+            '**Hybrid Identity Administrator**. Can configure federation, which is Golden SAML on a plate.',
+            '**Intune Administrator**: can push scripts to managed devices, i.e. Code execution on endpoints including privileged ones.',
+            '**Directory Synchronization Accounts**: the Entra Connect service identity. Not for humans, and it is often the most over-trusted identity in the tenant.',
+            '**Groups Administrator / User Administrator**: dangerous where role-assignable groups exist.',
         ],
         eg: 'An attacker who cannot reach Global Admin takes Application Administrator instead, adds a client secret to an over-privileged service principal, and grants themselves Global Admin through Graph.',
         keys: 'entra roles global administrator privileged role administrator privileged authentication administrator application administrator hybrid identity administrator escalation paths tier 0 cloud',
@@ -387,10 +387,10 @@ window.BL_TERMS.push(
         what: 'Non-human identities. An **app registration** is the definition; a **service principal** is its instance in your tenant. They authenticate with a secret or a certificate, they usually have no MFA and no Conditional Access, and they are the most common Entra persistence mechanism there is.',
         spot: [
             'Adding a **client secret or certificate** to an existing, trusted application is quiet, survives every user password reset, and is rarely reviewed. Alert on credential additions to service principals.',
-            'The permissions that matter are **application** permissions (`Mail.ReadWrite`, `Directory.ReadWrite.All`, `RoleManagement.ReadWrite.Directory`, `AppRoleAssignment.ReadWrite.All`) — they need no signed-in user.',
+            'The permissions that matter are **application** permissions (`Mail.ReadWrite`, `Directory.ReadWrite.All`, `RoleManagement.ReadWrite.Directory`, `AppRoleAssignment.ReadWrite.All`): they need no signed-in user.',
             '**Workload identity federation** lets an app authenticate with an external token and no stored secret at all. Excellent engineering, and excellent stealth if an attacker adds one.',
             'Service principal sign-ins are in a **separate log** (`AADServicePrincipalSignInLogs`). Teams that only watch user sign-ins are blind to all of this.',
-            'Conditional Access historically did not apply to workload identities — check what your licence and policies actually cover.',
+            'Conditional Access historically did not apply to workload identities. Check what your licence and policies actually cover.',
         ],
         eg: 'A legacy test application from 2019 holds `Mail.ReadWrite` across the tenant. The attacker adds a certificate to it and reads every mailbox for months without a single user sign-in event.',
         keys: 'service principal app registration enterprise application client secret certificate credential workload identity graph permissions oauth persistence non human identity',
@@ -424,7 +424,7 @@ window.BL_TERMS.push(
             'Extracted from a compromised device, typically by an attacker with local administrator rights. A device compromise is therefore an identity compromise.',
             'It carries the MFA claim, so replaying it satisfies Conditional Access MFA requirements.',
             'Mitigate with **TPM-bound keys**, **token protection** in Conditional Access (binds a token to the device it was issued to), device compliance requirements, and by preventing users from being local administrators.',
-            'Revoking sessions and refresh tokens invalidates it — another reason revocation, not password reset, is the containment action.',
+            'Revoking sessions and refresh tokens invalidates it. Another reason revocation, not password reset, is the containment action.',
         ],
         eg: 'An infostealer on a hybrid-joined laptop takes the PRT. The attacker reads mail from another continent, and the sign-in log shows a compliant device with MFA satisfied.',
         keys: 'primary refresh token prt theft device sso token protection tpm bound conditional access device compliance pass the prt',
@@ -435,13 +435,13 @@ window.BL_TERMS.push(
         glyph: '🔗',
         cat: 'directory',
         aud: 'pro',
-        what: 'A computer account created in on-prem AD called `AZUREADSSOACC$`, whose Kerberos key lets domain-joined machines sign in to the cloud silently. Its hash effectively signs cloud logons — a silver ticket for Entra ID.',
+        what: 'A computer account created in on-prem AD called `AZUREADSSOACC$`, whose Kerberos key lets domain-joined machines sign in to the cloud silently. Its hash effectively signs cloud logons: a silver ticket for Entra ID.',
         spot: [
             'Its password is **not** rotated automatically. Microsoft advises rotating it at least every 30 days; almost nobody does.',
             'Anyone who can dump it (a DCSync, an NTDS extraction, a DC compromise) can forge Kerberos tickets accepted by the cloud, bypassing on-prem MFA.',
             'Treat `AZUREADSSOACC$` as a Tier 0 secret and rotate it as part of any suspected domain compromise. It is one of the most frequently missed steps in hybrid recovery.',
         ],
-        eg: 'The domain is rebuilt, krbtgt is reset twice, and the attacker keeps cloud access — because the seamless SSO account key was never rolled.',
+        eg: 'The domain is rebuilt, krbtgt is reset twice, and the attacker keeps cloud access, because the seamless SSO account key was never rolled.',
         keys: 'seamless sso azureadssoacc kerberos cloud sso rotate key hybrid persistence silver ticket cloud desktop sso',
     },
     {
@@ -451,7 +451,7 @@ window.BL_TERMS.push(
         glyph: '🔄',
         cat: 'directory',
         aud: 'pro',
-        what: 'The server that synchronises on-prem AD to the cloud. It holds credentials for both sides, which makes it a bridge in both directions and unambiguously a Tier 0 asset — yet it is very often built as an ordinary member server and patched last.',
+        what: 'The server that synchronises on-prem AD to the cloud. It holds credentials for both sides, which makes it a bridge in both directions and unambiguously a Tier 0 asset, yet it is very often built as an ordinary member server and patched last.',
         spot: [
             'The on-prem connector account holds **replication rights** (i.e. it can DCSync) and, with password writeback enabled, can reset on-prem passwords.',
             'The cloud sync account holds the **Directory Synchronization Accounts** role. Historically it could reset cloud passwords for synced users.',
@@ -488,7 +488,7 @@ window.BL_TERMS.push(
         what: 'Makes privileged roles **eligible** rather than permanent: an administrator activates the role for a limited time, with justification, MFA and optionally approval. It shrinks the window in which a stolen admin session is useful from forever to a couple of hours.',
         spot: [
             'It only helps if standing assignments are actually removed. "PIM enabled" alongside twelve permanent Global Admins achieves nothing.',
-            'Check **eligible** assignments as well as active ones during an investigation — an attacker will make themselves eligible, not active, because it is far less visible.',
+            'Check **eligible** assignments as well as active ones during an investigation. An attacker will make themselves eligible, not active, because it is far less visible.',
             'Require approval and phishing-resistant MFA for activation, and alert on activations outside working hours.',
             'Keep two **break-glass** accounts outside PIM, excluded from Conditional Access, with FIDO2 keys or long passwords in a physical safe, and alert on every use.',
         ],
@@ -502,10 +502,10 @@ window.BL_TERMS.push(
         glyph: '🧱',
         cat: 'defence',
         aud: 'pro',
-        what: 'A scope that limits an administrator to a subset of users, groups or devices — the nearest cloud equivalent of an OU delegation. **Restricted management** administrative units go further: they protect the objects inside from tenant-level administrators too.',
+        what: 'A scope that limits an administrator to a subset of users, groups or devices: the nearest cloud equivalent of an OU delegation. **Restricted management** administrative units go further: they protect the objects inside from tenant-level administrators too.',
         spot: [
             'Use restricted management AUs to protect break-glass accounts, executives and Tier 0 service accounts from an otherwise-compromised Helpdesk or User Administrator.',
-            'An attacker can also use AUs offensively — creating one, adding a victim, and delegating themselves rights over it. Alert on AU creation and role assignment scoped to an AU.',
+            'An attacker can also use AUs offensively: creating one, adding a victim, and delegating themselves rights over it. Alert on AU creation and role assignment scoped to an AU.',
         ],
         eg: 'A compromised Helpdesk Administrator cannot reset the CFO’s password, because the CFO sits in a restricted management administrative unit.',
         keys: 'administrative unit restricted management au scoped role assignment delegation entra protect executives break glass',
@@ -519,9 +519,9 @@ window.BL_TERMS.push(
         what: 'External identities invited into your tenant, and the settings that decide what other tenants may do with yours. Guests are frequently forgotten, frequently over-permissioned, and are authenticated by somebody else’s security team.',
         spot: [
             'Default guest permissions historically allowed reading a great deal of directory data. Set guest access to the most restrictive level and review it.',
-            'A guest can hold a directory role. Enumerate role assignments including guests — this is a genuine and regularly missed finding.',
+            'A guest can hold a directory role. Enumerate role assignments including guests. This is a genuine and regularly missed finding.',
             '**Cross-tenant access settings** and **cross-tenant synchronisation** can let a partner tenant provision users into yours. An attacker who compromises the partner inherits that.',
-            'Review inbound and outbound trust settings, especially "trust MFA from other tenants" — you are then relying on their MFA quality.',
+            'Review inbound and outbound trust settings, especially "trust MFA from other tenants". You are then relying on their MFA quality.',
             'Retire stale guests automatically with access reviews.',
         ],
         eg: 'A supplier’s tenant is breached. Because cross-tenant settings trust their MFA and their guests hold a role in your tenant, the intrusion walks straight in.',
@@ -534,7 +534,7 @@ window.BL_TERMS.push(
         glyph: '🤝',
         cat: 'directory',
         aud: 'pro',
-        what: 'Your managed service provider or reseller holding administrative rights in your tenant. Legacy DAP granted them full Global Admin; GDAP replaces it with granular, time-bound roles — but only if it has actually been configured that way.',
+        what: 'Your managed service provider or reseller holding administrative rights in your tenant. Legacy DAP granted them full Global Admin; GDAP replaces it with granular, time-bound roles, but only if it has actually been configured that way.',
         spot: [
             'Enumerate your partner relationships and the exact roles they hold, today. Many organisations do not know.',
             'A partner compromise is a direct route into every customer tenant they manage, and this has been used at scale.',
@@ -551,7 +551,7 @@ window.BL_TERMS.push(
         aud: 'pro',
         what: 'A device can be Entra-joined (cloud only), hybrid-joined (both directories), Entra-registered (personal, brought to work) or domain-joined only. The state determines what tokens it can hold and what Conditional Access can require of it.',
         spot: [
-            'Anyone can usually **register** a device by default. Attackers register their own to satisfy device-based policy — restrict who may join or register, and require MFA to do it.',
+            'Anyone can usually **register** a device by default. Attackers register their own to satisfy device-based policy. Restrict who may join or register, and require MFA to do it.',
             'A hybrid-joined device is a bridge: compromise on-prem, and you inherit the cloud tokens on it.',
             'Review stale device objects. A device object that has not checked in for a year should not be satisfying a compliance requirement.',
         ],
@@ -566,10 +566,10 @@ window.BL_TERMS.push(
         aud: 'pro',
         what: 'Identity investigations are won or lost on retention decided months earlier. Know which log holds what, and where it goes when the portal’s window closes.',
         spot: [
-            '**Entra sign-in logs** — interactive, non-interactive, service principal and managed identity sign-ins are four *separate* tables. Watching only the first is a common and serious blind spot.',
-            '**Entra audit logs** — role assignments, app credentials, consent, policy and domain changes. This is where persistence appears.',
-            '**Microsoft Graph activity logs** — what an identity actually *did* through Graph, not merely that it signed in.',
-            '**Unified Audit Log (Purview)** — mailbox access, file access, admin actions across Microsoft 365.',
+            '**Entra sign-in logs**: interactive, non-interactive, service principal and managed identity sign-ins are four *separate* tables. Watching only the first is a common and serious blind spot.',
+            '**Entra audit logs**: role assignments, app credentials, consent, policy and domain changes. This is where persistence appears.',
+            '**Microsoft Graph activity logs**. What an identity actually *did* through Graph, not merely that it signed in.',
+            '**Unified Audit Log (Purview)**: mailbox access, file access, admin actions across Microsoft 365.',
             '**On-prem**: Security event logs from all DCs, with Directory Service Changes and appropriate advanced audit policy enabled; plus Sysmon on Tier 0.',
             'Portal retention is short (7 days without a licence, 30 with P1/P2). **Ship everything to a SIEM with at least a year of retention.** Every incident is older than the first alert.',
         ],
@@ -596,7 +596,7 @@ window.BL_DEFEND.push(
             'Create separate accounts per tier. A person gets `j.smith` for mail, `j.smith-a` for servers, `j.smith-da` for Tier 0. Never one account with three hats.',
             'Give Tier 0 administration its own hardened workstation (a **PAW**) that does no mail, no browsing and no document handling.',
             'Enforce it technically, not by policy alone: use **authentication policy silos** or Deny logon rights (`Deny log on locally`, `Deny log on through Remote Desktop`, `Deny log on as a batch job`) so a Tier 0 credential physically cannot be used on a Tier 1 or 2 machine.',
-            'Add Tier 0 accounts to **Protected Users** and set "Account is sensitive and cannot be delegated". Test first — it breaks NTLM and RC4 dependencies by design.',
+            'Add Tier 0 accounts to **Protected Users** and set "Account is sensitive and cannot be delegated". Test first: it breaks NTLM and RC4 dependencies by design.',
             'Deploy **Windows LAPS** everywhere so local administrator passwords are unique and rotated, and restrict who can read them.',
             'Move service accounts to **group Managed Service Accounts**. Remove every service account from Domain Admins; almost none of them ever needed it.',
             'Audit quarterly for tier violations: privileged logon events on non-Tier-0 machines, and Tier 0 group membership drift.',
@@ -605,7 +605,7 @@ window.BL_DEFEND.push(
             {
                 h: 'Why "just be careful" fails',
                 p: [
-                    'Every credential used on a machine can be stolen from that machine. Not "might be" — can be, by anyone with administrative rights on it, using standard tooling.',
+                    'Every credential used on a machine can be stolen from that machine. Not "might be": can be, by anyone with administrative rights on it, using standard tooling.',
                     'So the moment a domain admin opens a Remote Desktop session to a compromised file server to fix something at 11pm, the file server owns the domain. The intent was good, the discipline was momentary, and the outcome is total.',
                     'That is why the control has to be technical. Deny-logon rights and authentication policy silos remove the possibility of a tired human making the wrong call.',
                 ],
@@ -613,14 +613,14 @@ window.BL_DEFEND.push(
             {
                 h: 'The assets people forget are Tier 0',
                 p: [
-                    '**Backup systems** — they can restore a DC, therefore they can read it. **Hypervisors** — they can copy a DC’s disk. **The certificate authority** — it can issue an authentication certificate for any user. **Deployment tools** (Configuration Manager, Intune) — they run code as SYSTEM everywhere. **EDR consoles** — most can run arbitrary commands on every endpoint. **Password vaults** — obviously, and yet.',
+                    '**Backup systems**. They can restore a DC, therefore they can read it. **Hypervisors**. They can copy a DC’s disk. **The certificate authority**. It can issue an authentication certificate for any user. **Deployment tools** (Configuration Manager, Intune): they run code as SYSTEM everywhere. **EDR consoles**. Most can run arbitrary commands on every endpoint. **Password vaults**: obviously, and yet.',
                     'Every one of these has produced a domain compromise while the domain controllers themselves were perfectly hardened.',
                 ],
             },
             {
                 h: 'Starting from nothing, in order',
                 p: [
-                    '1. Inventory who is actually in Domain Admins, Enterprise Admins, Schema Admins, Administrators and Backup Operators today. Remove everyone who does not need it — the list is usually two-thirds too long.',
+                    '1. Inventory who is actually in Domain Admins, Enterprise Admins, Schema Admins, Administrators and Backup Operators today. Remove everyone who does not need it. The list is usually two-thirds too long.',
                     '2. Get service accounts out of privileged groups, then give them gMSA or long passwords.',
                     '3. Deploy LAPS. This alone stops most lateral movement.',
                     '4. Create separate Tier 0 accounts and stop using shared ones.',
@@ -650,7 +650,7 @@ window.BL_DEFEND.push(
             'Remove **unconstrained delegation** from everything that is not a domain controller. Then check constrained delegation with protocol transition, and audit `msDS-AllowedToActOnBehalfOfOtherIdentity` everywhere.',
             'Audit `sIDHistory` across all accounts and clear anything left over from a migration. Enable **SID filtering** on trusts that do not need it.',
             'Disable **RC4** and require **AES** for Kerberos, after auditing for dependencies. Then disable NTLMv1 outright and start restricting NTLM.',
-            'Audit the ACLs on the domain root, the Domain Controllers OU, AdminSDHolder, the GPOs linked to Tier 0, and the certificate templates container. Run a **graphing tool** — attack paths are not visible in a list.',
+            'Audit the ACLs on the domain root, the Domain Controllers OU, AdminSDHolder, the GPOs linked to Tier 0, and the certificate templates container. Run a **graphing tool**. Attack paths are not visible in a list.',
             'Disable the **Print Spooler** on domain controllers, and anywhere else it is not needed.',
             'Find and disable stale accounts and computers. Every dormant enabled account is a free attempt for an attacker.',
             'Enforce a modern password policy: long minimums, banned-password list, no forced periodic expiry, and MFA in front of anything that matters.',
@@ -659,7 +659,7 @@ window.BL_DEFEND.push(
             {
                 h: 'The order matters',
                 p: [
-                    'Do the ones that break nothing first — `MachineAccountQuota`, spooler on DCs, stale accounts, AS-REP flags. They are free.',
+                    'Do the ones that break nothing first: `MachineAccountQuota`, spooler on DCs, stale accounts, AS-REP flags. They are free.',
                     'LDAP and SMB signing, RC4 removal and NTLM restriction all have real compatibility impact. Audit first: LDAP interface events (2887/2889), NTLM auditing, and Kerberos encryption-type logging will tell you exactly what will break, before it does.',
                     'Never enforce a signing or encryption change on a Friday. That advice is boring, universal, and repeatedly ignored.',
                 ],
@@ -671,8 +671,8 @@ window.BL_DEFEND.push(
                     'Check the CA for the `EDITF_ATTRIBUTESUBJECTALTNAME2` flag (ESC6) and remove it.',
                     'Check who holds `ManageCA` and `ManageCertificates` (ESC7).',
                     'Enable **Extended Protection for Authentication** on the web enrolment endpoint, or remove web enrolment entirely, to stop ESC8.',
-                    '**KB5014754 strong certificate binding is now enforced by default** — domain controllers moved to Full Enforcement in February 2025 where the registry key was not set, and the September 2025 update removed the ability to go back to Compatibility mode. The job now is not "enable it" but *find what it broke*: hunt the KDC audit events for certificates with no strong mapping, and either reissue them with the SID extension or add a strong `altSecurityIdentities` mapping (`X509IssuerSerialNumber` is the recommended one).',
-                    'Run the audit with current tooling rather than a fixed checklist — the ESC catalogue has grown well past the original list.',
+                    '**KB5014754 strong certificate binding is now enforced by default**: domain controllers moved to Full Enforcement in February 2025 where the registry key was not set, and the September 2025 update removed the ability to go back to Compatibility mode. The job now is not "enable it" but *find what it broke*: hunt the KDC audit events for certificates with no strong mapping, and either reissue them with the SID extension or add a strong `altSecurityIdentities` mapping (`X509IssuerSerialNumber` is the recommended one).',
+                    'Run the audit with current tooling rather than a fixed checklist. The ESC catalogue has grown well past the original list.',
                 ],
             },
             {
@@ -697,11 +697,11 @@ window.BL_DEFEND.push(
         aud: 'pro',
         impact: 'high',
         effort: 'an evening',
-        lede: 'Entra ID is internet-facing, so Conditional Access is the firewall and roles are the network diagram. This is the baseline that stops the attacks in the playbooks on this site — in the order that gives you the most protection soonest.',
+        lede: 'Entra ID is internet-facing, so Conditional Access is the firewall and roles are the network diagram. This is the baseline that stops the attacks in the playbooks on this site, in the order that gives you the most protection soonest.',
         steps: [
             'Create **two break-glass accounts**: cloud-only, `.onmicrosoft.com`, excluded from all Conditional Access, with FIDO2 keys or 30+ character passwords split in two physical safes. Alert on any sign-in by either. Test them quarterly.',
             'Require **phishing-resistant MFA** (FIDO2, passkeys, Windows Hello for Business, certificate-based) for every privileged role. Do the admins first; nothing else on this list matters as much.',
-            'Require MFA for all users, and **block legacy authentication** outright. Legacy auth cannot do MFA, so it is the standing bypass of everything else. Basic authentication is already retired across Exchange Online — the survivor to go and disable per-mailbox is **SMTP AUTH**, usually left on years ago for a printer or a line-of-business app.',
+            'Require MFA for all users, and **block legacy authentication** outright. Legacy auth cannot do MFA, so it is the standing bypass of everything else. Basic authentication is already retired across Exchange Online: the survivor to go and disable per-mailbox is **SMTP AUTH**, usually left on years ago for a printer or a line-of-business app.',
             'Turn on **PIM**: remove standing assignments, make roles eligible, require justification, approval and MFA to activate, and set a short maximum duration.',
             'Restrict **user consent** to verified publishers and low-impact permissions, and enable the admin consent workflow. This removes an entire attack class in one setting.',
             'Restrict who may **register applications**, **create tenants** and **join or register devices**. The defaults are permissive.',
@@ -717,7 +717,7 @@ window.BL_DEFEND.push(
                 h: 'The break-glass accounts, done right',
                 p: [
                     'Two of them, so that one being compromised or locked does not end the tenant. Cloud-only, on the default `.onmicrosoft.com` domain, so a federation problem cannot lock you out.',
-                    'Excluded from **every** Conditional Access policy — including the ones you add next year. Put that in the change process.',
+                    'Excluded from **every** Conditional Access policy, including the ones you add next year. Put that in the change process.',
                     'Not synced, not in PIM, not in Protected Users, no per-user MFA that depends on a phone somebody has left.',
                     'Alert loudly on any authentication. A break-glass sign-in is either a disaster or an incident, and both need someone to notice within minutes.',
                     'Protect them with a **restricted management administrative unit** so a compromised User Administrator cannot reset them.',
@@ -729,7 +729,7 @@ window.BL_DEFEND.push(
                     'Name policies so the intent is obvious: `CA01-Admins-Require-PhishResistantMFA`. Future-you will be reading them at 3am.',
                     'Every exclusion needs an owner and a review date. An exclusion group with no owner is a backdoor with a friendly name.',
                     'Nothing stays in report-only for more than a sprint. Decide, then enforce or delete.',
-                    'Export policies to source control and diff them on a schedule. Alert on any change to any policy, always — attackers edit policies rather than deleting them, because deletion is noticed.',
+                    'Export policies to source control and diff them on a schedule. Alert on any change to any policy, always: attackers edit policies rather than deleting them, because deletion is noticed.',
                 ],
             },
             {
@@ -757,14 +757,14 @@ window.BL_DEFEND.push(
         lede: 'Most organisations defend two directories and forget the corridor between them. An attacker who reaches domain admin on-prem can usually reach Global Admin in the cloud, and increasingly the reverse is also true. These are the specific bridges, and how to burn each one.',
         steps: [
             'Treat the **Entra Connect** server as a domain controller: Tier 0 OU, Tier 0 administrators only, no browsing, no mail, patched first, monitored hardest.',
-            'Prefer **Entra Cloud Sync** over the classic Connect server where it fits — it removes a Tier 0 Windows server from the picture entirely.',
+            'Prefer **Entra Cloud Sync** over the classic Connect server where it fits: it removes a Tier 0 Windows server from the picture entirely.',
             'Rotate the **`AZUREADSSOACC$`** Kerberos key on a schedule (Microsoft suggests at least every 30 days) and always after any suspected domain compromise. This is the most frequently missed hybrid recovery step.',
             'If you use **ADFS**, treat it and its token-signing keys as Tier 0, or migrate to managed authentication and remove the server. Federation is a Golden SAML risk that managed authentication simply does not have.',
             'Audit **Pass-through Authentication agents**: know exactly how many exist and where. An unexpected agent is plaintext credential capture.',
             'Ensure **no synced account holds a privileged cloud role**. Cloud admin identities must be cloud-only, so an on-prem compromise cannot reach them.',
-            'Turn off the Global Administrator **"Access management for Azure resources"** elevation unless it is actively needed — it converts tenant admin into owner of every subscription.',
+            'Turn off the Global Administrator **"Access management for Azure resources"** elevation unless it is actively needed: it converts tenant admin into owner of every subscription.',
             'Restrict who can deploy scripts and applications from **Intune** and **Configuration Manager**; that is cloud-to-endpoint code execution, and endpoints include privileged ones.',
-            'Review **password writeback** and **self-service password reset** scope — writeback is a cloud-to-on-prem write path.',
+            'Review **password writeback** and **self-service password reset** scope. Writeback is a cloud-to-on-prem write path.',
             'Alert on changes to domain federation settings, on new PTA agents, on new Connect installations, and on any account gaining the Directory Synchronization Accounts role.',
         ],
         detail: [
@@ -781,11 +781,11 @@ window.BL_DEFEND.push(
             {
                 h: 'Cloud → on-prem, which people forget entirely',
                 p: [
-                    '**Intune or Configuration Manager** script deployment to domain-joined devices — code execution as SYSTEM on machines inside the domain.',
-                    '**Global Admin elevation to Azure** — then Run Command on any VM, and if a domain controller runs in Azure, that is the forest.',
-                    '**Azure Arc** — the same reach, extended to on-prem servers.',
-                    '**Password writeback** — a cloud-side reset that changes an on-prem password.',
-                    '**Hybrid-joined device compliance** — a cloud policy change that alters what on-prem devices trust.',
+                    '**Intune or Configuration Manager** script deployment to domain-joined devices: code execution as SYSTEM on machines inside the domain.',
+                    '**Global Admin elevation to Azure**: then Run Command on any VM, and if a domain controller runs in Azure, that is the forest.',
+                    '**Azure Arc**: the same reach, extended to on-prem servers.',
+                    '**Password writeback**: a cloud-side reset that changes an on-prem password.',
+                    '**Hybrid-joined device compliance**: a cloud policy change that alters what on-prem devices trust.',
                 ],
             },
             {
@@ -802,19 +802,19 @@ window.BL_DEFEND.push(
 
     {
         id: 'ad-monitoring',
-        title: 'Detect directory attacks — the alerts worth building',
+        title: 'Detect directory attacks: the alerts worth building',
         glyph: '📡',
         cat: 'ad',
         aud: 'pro',
         impact: 'high',
         effort: 'ongoing',
-        lede: 'You cannot alert on everything, and a noisy directory alert gets muted within a fortnight. This is the short list that has the best ratio of "this is genuinely bad" to "this fires all day" — build these before anything else.',
+        lede: 'You cannot alert on everything, and a noisy directory alert gets muted within a fortnight. This is the short list that has the best ratio of "this is genuinely bad" to "this fires all day": build these before anything else.',
         steps: [
             '**On-prem: DCSync from an unexpected source.** Event 4662 containing a replication GUID where the caller is not a DC and not the known sync account. Near-zero false positives.',
             '**On-prem: membership change in a Tier 0 group.** Events 4728 / 4732 / 4756 for Domain Admins, Enterprise Admins, Schema Admins, Administrators, Backup Operators, Account Operators, Print Operators, DnsAdmins.',
             '**On-prem: GPO created or modified**, especially those linked to the domain root or the Domain Controllers OU (Event 5136 on `groupPolicyContainer`, plus SYSVOL file changes).',
             '**On-prem: Kerberoasting burst.** Many 4769 events with encryption type `0x17` from one account in a short window.',
-            '**On-prem: AS-REP request with pre-auth type 0** (Event 4768) — should be zero once you have cleaned the flag.',
+            '**On-prem: AS-REP request with pre-auth type 0** (Event 4768). Should be zero once you have cleaned the flag.',
             '**On-prem: LSASS access** with suspicious `GrantedAccess` masks (Sysmon Event 10), and any use of `ntdsutil`, `vssadmin create shadow`, `diskshadow`, `esentutl` on a domain controller.',
             '**On-prem: certificate issued with a subject alternative name that does not match the requester**, and any change to a certificate template or CA configuration.',
             '**On-prem: `sIDHistory` written**, and `msDS-AllowedToActOnBehalfOfOtherIdentity` or `msDS-KeyCredentialLink` modified on any object.',
@@ -824,7 +824,7 @@ window.BL_DEFEND.push(
             '**Entra: domain federation settings changed, or a domain added.** Rare, legitimate a handful of times per decade, catastrophic when malicious.',
             '**Entra: Conditional Access policy created, modified or deleted**, including exclusion-group membership changes.',
             '**Entra: new MFA or authentication method registered** shortly after an atypical sign-in.',
-            '**Entra: successful sign-in with no MFA interaction from an unfamiliar ASN** — the signature of a replayed token.',
+            '**Entra: successful sign-in with no MFA interaction from an unfamiliar ASN**: the signature of a replayed token.',
         ],
         detail: [
             {
@@ -848,7 +848,7 @@ window.BL_DEFEND.push(
                 h: 'Plant a few honeytokens',
                 p: [
                     'A decoy privileged-looking account with no real rights, never used, alerting on any authentication or enumeration.',
-                    'A decoy service account with an SPN and a deliberately weak-looking password — any 4769 for it means somebody is kerberoasting.',
+                    'A decoy service account with an SPN and a deliberately weak-looking password. Any 4769 for it means somebody is kerberoasting.',
                     'A file named like a credential store on a share an attacker will find. These cost almost nothing and produce the highest-confidence alerts you will ever build.',
                 ],
             },
@@ -869,7 +869,7 @@ window.BL_DEFEND.push(
         steps: [
             'Write and **print** an AD forest recovery plan naming the recovery forest root DC, the order of restoration, and who is authorised to make each call.',
             'Keep **offline, immutable system state backups** of at least two domain controllers per domain, including one holding the FSMO roles. Verify they restore.',
-            'Store the **DSRM password** for every DC somewhere retrievable when the domain is down — and test that you can retrieve it.',
+            'Store the **DSRM password** for every DC somewhere retrievable when the domain is down, and test that you can retrieve it.',
             'Document the **FSMO role holders**, the DNS design, the trust topology and the certificate authority hierarchy. On paper, not in the wiki that will be encrypted.',
             'Have the **krbtgt double-reset procedure** written, scripted and rehearsed, with the interval and replication checks spelled out.',
             'Keep a **clean-build capability**: known-good media, a documented DC build, and a way to stand up an isolated network segment quickly.',
@@ -881,14 +881,14 @@ window.BL_DEFEND.push(
                 h: 'Why "restore from backup" is usually the wrong instinct',
                 p: [
                     'If the attacker had domain admin, the backup contains their persistence. Restoring it restores them. Backups let you recover *data* and *availability*; they do not establish *trustworthiness*.',
-                    'Microsoft’s own forest recovery guidance is built around restoring one DC per domain from a known-good point and rebuilding every other one from clean media — not around restoring everything.',
+                    'Microsoft’s own forest recovery guidance is built around restoring one DC per domain from a known-good point and rebuilding every other one from clean media, not around restoring everything.',
                     'This is why establishing the compromise timeline matters so much: it decides which backup, if any, predates the intrusion.',
                 ],
             },
             {
                 h: 'The decision nobody wants to make',
                 p: [
-                    'Rebuild the forest when Tier 0 is confirmed compromised and you cannot credibly enumerate the persistence — or when the dwell time exceeds your log retention, which amounts to the same thing.',
+                    'Rebuild the forest when Tier 0 is confirmed compromised and you cannot credibly enumerate the persistence, or when the dwell time exceeds your log retention, which amounts to the same thing.',
                     'Clean in place when the intrusion is recent, well-scoped, fully logged, and the persistence checklist is complete and verified.',
                     '"We think we got it all" is not a third option. If that is the honest state, you are in the first case.',
                     'Bring in external DFIR before making this call. It is expensive to get wrong in both directions.',
