@@ -229,6 +229,7 @@
             ['ip', 'IP address', 'e.g. 198.51.100.7'],
             ['user', 'User contains', 'e.g. jo@contoso.com'],
             ['op', 'Operation contains', 'e.g. MailItemsAccessed'],
+            ['text', 'Text contains', 'searches inside the JSON too'],
             ['from', 'From date', 'YYYY-MM-DD'],
             ['to', 'To date', 'YYYY-MM-DD'],
         ].forEach(([k, label, ph]) => {
@@ -241,7 +242,7 @@
         });
         box.appendChild(grid);
         box.appendChild(el('p', { class: 'muted small' }, rich(
-            'The **IP** filter looks at every address found anywhere in the record, including inside the JSON. A complete address must match exactly; end with a dot for a prefix, like `203.0.113.`. Dates are read as **UTC**, the same clock Purview writes. Leave everything blank to convert the whole file.')));
+            'The **IP** filter looks at every address found anywhere in the record, including inside the JSON. A complete address must match exactly; end with a dot for a prefix, like `203.0.113.`. **Text contains** searches the whole raw row, so it reaches every value inside the AuditData JSON. Dates are read as **UTC**, the same clock Purview writes. Leave everything blank to convert the whole file.')));
 
         box.appendChild(el('p', { class: 'sub-h', text: 'Which tables do you need?' }));
         const tableDefs = [
@@ -251,7 +252,7 @@
             ['mail', 'mail-items.csv', 'folders and messages touched'],
             ['affected', 'affected-items.csv', 'files and eDiscovery targets'],
             ['ipsummary', 'ip-summary.csv', 'every address with counts'],
-            ['subset', 'subset.csv', 'original schema, loads back into Logscope'],
+            ['subset', 'original-rows.csv', 'the matching rows exactly as exported, loads back into Logscope'],
         ];
         const tableChecks = {};
         const twrap = el('div', { class: 'split-tables' });
@@ -265,7 +266,33 @@
             twrap.appendChild(lab);
         });
         box.appendChild(twrap);
-        box.appendChild(el('p', { class: 'muted small', text: 'Tables with no rows are skipped automatically. Keep subset.csv ticked if you may want to reload the result into the analyser.' }));
+        box.appendChild(el('p', { class: 'muted small', text: 'Tables with no rows are skipped automatically. Keep original-rows.csv ticked if you may want to reload the result into the analyser.' }));
+
+        /* Tables discovered inside the JSON (Actor, Target, ...) vary per
+           file, so their checkboxes appear once a preview or split has seen
+           it. Everything discovered is included unless unticked. */
+        const famChecks = {};
+        const famWrap = el('div', { class: 'split-tables', hidden: true });
+        const famNote = el('p', { class: 'muted small', text: 'Every array inside AuditData (Actor, Target, and so on) also becomes its own table. Run a preview to list the ones in this file; all of them are included unless you untick them here.' });
+        box.appendChild(famNote);
+        box.appendChild(famWrap);
+
+        function updateFamilies(list) {
+            (list || []).forEach(f => {
+                if (famChecks[f.name]) return;
+                const lab = el('label', { class: 'split-check', title: 'rows of the ' + f.name + ' array, one line per item' });
+                const cbx = el('input', { type: 'checkbox' });
+                cbx.checked = f.enabled !== false;
+                famChecks[f.name] = cbx;
+                lab.appendChild(cbx);
+                lab.appendChild(el('span', { text: f.name + '.csv' }));
+                famWrap.appendChild(lab);
+            });
+            if (Object.keys(famChecks).length) {
+                famWrap.hidden = false;
+                famNote.textContent = 'Tables found inside AuditData, one line per array item. All are written unless unticked; re-run after changing.';
+            }
+        }
 
         box.appendChild(el('p', { class: 'sub-h', text: 'Columns in records.csv' }));
         const tsel = el('select', { class: 'split-select', 'aria-label': 'Column template for records.csv' });
@@ -294,6 +321,11 @@
                 filters.tables[id] = tableChecks[id].checked;
                 if (tableChecks[id].checked) any = true;
             });
+            filters.families = {};
+            Object.keys(famChecks).forEach(name => {
+                filters.families[name] = famChecks[name].checked;
+                if (famChecks[name].checked) any = true;
+            });
             if (!any) { toast('Tick at least one table'); return; }
             goBtn.disabled = true;
             previewBtn.disabled = true;
@@ -319,6 +351,7 @@
                     goBtn.disabled = false;
                     previewBtn.disabled = false;
                     bar.firstChild.style.width = '100%';
+                    updateFamilies(stats.families);
                     renderSplitResult(results, tables, stats);
                     status.textContent = 'Done.';
                     toast(stats.preview ? 'Preview ready' : stats.matched.toLocaleString() + ' records written');
@@ -415,13 +448,13 @@
 
         if (stats.unparsed) {
             host.appendChild(el('p', { class: 'muted small' }, rich(
-                stats.unparsed.toLocaleString() + ' row(s) had no readable **AuditData** JSON. They are kept in subset.csv and searched for IP addresses as plain text, but contribute no columns.')));
+                stats.unparsed.toLocaleString() + ' row(s) had no readable **AuditData** JSON. They are kept in original-rows.csv and searched for IP addresses as plain text, but contribute no columns.')));
         }
         if (stats.droppedCols) {
             host.appendChild(el('p', { class: 'muted small' }, rich(
                 stats.droppedCols.toLocaleString() + ' rare column(s) did not fit records.csv. ' +
-                (hasSubset ? 'Nothing is lost: the full record for every row is in **subset.csv**.'
-                    : 'Tick **subset.csv** and run again if you need every column.'))));
+                (hasSubset ? 'Nothing is lost: the full record for every row is in **original-rows.csv**.'
+                    : 'Tick **original-rows.csv** and run again if you need every column.'))));
         }
         if (stats.usersCapped) {
             host.appendChild(el('p', { class: 'muted small', text: 'The account counter stopped at 5,000 distinct accounts; treat that figure as "at least".' }));
@@ -433,8 +466,16 @@
                 'Template **' + tl + '**: records.csv carries the ' + (stats.baseCols || 10) + ' fixed columns plus ' +
                 tcols + ' template column' + (tcols === 1 ? '' : 's') + ', out of ' +
                 (stats.availableCols || 0).toLocaleString() + ' JSON columns in the file. ' +
-                (hasSubset ? 'A template hides nothing: **subset.csv** keeps the full record.'
-                    : 'Tick **subset.csv** and run again if you need the rest.'))));
+                (hasSubset ? 'A template hides nothing: **original-rows.csv** keeps the full record.'
+                    : 'Tick **original-rows.csv** and run again if you need the rest.'))));
+        }
+        if (stats.familiesDropped) {
+            host.appendChild(el('p', { class: 'muted small' }, rich(
+                stats.familiesDropped.toLocaleString() + ' rarer JSON array table(s) beyond the first 12 were not written. The full content is always in **original-rows.csv**.')));
+        }
+        if (stats.familyCapped && stats.familyCapped.length) {
+            host.appendChild(el('p', { class: 'muted small' }, rich(
+                'The ' + stats.familyCapped.join(', ') + ' array(s) can exceed 200 items in a single record; the table carries the first 200 per record and **original-rows.csv** keeps everything.')));
         }
         if (stats.templateMissing && stats.templateMissing.length) {
             host.appendChild(el('p', { class: 'muted small', text:
@@ -477,9 +518,10 @@
         [
             'Open **records.csv** in Excel and use a normal column filter. **AllIPs** holds every address found in the record, so filtering there cannot miss one hidden in the JSON.',
             'The other tables join back on **RowId**, and on **RecordId** where the export provides one.',
-            '**subset.csv** keeps the original columns with **nothing truncated**, so if you filtered it down below 80 MB you can load it straight back into the analyser above.',
-            'In the Excel-facing tables, any cell beyond the 32,767-character limit is marked `...[truncated]` rather than silently cut. The untouched value is always in subset.csv.',
-            'Log fields can contain hostile text. In the Excel-facing tables, a cell that would start with =, +, - or @ is prefixed with an apostrophe so Excel cannot run it as a formula. subset.csv keeps the original bytes.',
+            '**original-rows.csv** is the export exactly as Purview wrote it, only filtered. Its **AuditData** column stays raw JSON on purpose: that is what loads back into the analyser. The same content, unpacked into filterable columns, is **records.csv** and the array tables.',
+            'If you filtered original-rows.csv down below 80 MB you can load it straight back into the analyser above.',
+            'In the Excel-facing tables, any cell beyond the 32,767-character limit is marked `...[truncated]` rather than silently cut. The untouched value is always in original-rows.csv.',
+            'Log fields can contain hostile text. In the Excel-facing tables, a cell that would start with =, +, - or @ is prefixed with an apostrophe so Excel cannot run it as a formula. original-rows.csv keeps the original bytes.',
         ].forEach(x => how.appendChild(el('li', null, rich(x))));
         host.appendChild(how);
 

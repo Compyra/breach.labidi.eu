@@ -357,7 +357,8 @@
                 const ad1 = JSON.stringify({
                     CreationTime: '2026-07-28T09:45:00', Id: 'r1', Operation: 'New-InboxRule',
                     UserId: 'jo@contoso.com', Workload: 'Exchange', ClientIP: '198.51.100.7',
-                    Parameters: [{ Name: 'Name', Value: '.' }, { Name: 'MoveToFolder', Value: 'RSS Feeds' }]
+                    Parameters: [{ Name: 'Name', Value: '.' }, { Name: 'MoveToFolder', Value: 'RSS Feeds' }],
+                    Actor: [{ ID: 'jo@contoso.com', Type: 0 }, { ID: 'a-guid-1', Type: 2 }]
                 });
                 const ad2 = JSON.stringify({
                     CreationTime: '2026-07-28T10:00:00', Id: 'r2', Operation: 'MailItemsAccessed',
@@ -405,22 +406,28 @@
                     ok('split: IP summary covers parsed and unparsed rows',
                         t['ip-summary.csv'] && t['ip-summary.csv'].rows === 3,
                         t['ip-summary.csv'] && t['ip-summary.csv'].rows);
-                    ok('split: subset keeps the original schema (4 data rows)',
-                        t['subset.csv'] && t['subset.csv'].rows === 4,
-                        t['subset.csv'] && t['subset.csv'].rows);
+                    ok('split: original rows keep the export schema (4 data rows)',
+                        t['original-rows.csv'] && t['original-rows.csv'].rows === 4,
+                        t['original-rows.csv'] && t['original-rows.csv'].rows);
                     ok('split: empty tables are omitted', !t['modified-properties.csv']);
                     ok('split: results carry a sample of each table',
                         t['records.csv'].sample.length === 4 && t['records.csv'].header[0] === 'RowId' &&
-                        t['subset.csv'].sample.length === 4 && t['subset.csv'].header[0] === 'CreationDate',
+                        t['original-rows.csv'].sample.length === 4 && t['original-rows.csv'].header[0] === 'CreationDate',
                         t['records.csv'].sample.length + '/' + (t['records.csv'].header || [])[0]);
+                    ok('split: arrays inside the JSON become their own tables',
+                        t['Actor.csv'] && t['Actor.csv'].rows === 2 && t['Actor.csv'].header.indexOf('ID') > 5,
+                        t['Actor.csv'] && t['Actor.csv'].rows + '/' + t['Actor.csv'].header.join(','));
+                    ok('split: discovered tables are reported for the checkboxes',
+                        stats.families.length === 1 && stats.families[0].name === 'Actor' && stats.families[0].records === 1,
+                        JSON.stringify(stats.families));
 
-                    /* The oversized record must survive subset.csv uncut and
-                       come back through the analyser's own parser. */
-                    t['subset.csv'].blob.text().then(function (text) {
-                        ok('split: subset carries the oversized cell uncut',
+                    /* The oversized record must survive original-rows.csv uncut
+                       and come back through the analyser's own parser. */
+                    t['original-rows.csv'].blob.text().then(function (text) {
+                        ok('split: original rows carry the oversized cell uncut',
                             text.indexOf('...[truncated]') < 0 && text.indexOf('SSSS') > 0);
-                        const re = LS_PARSE.parseText(text, 'subset.csv');
-                        ok('split: subset re-ingests as UAL', re.kind === 'ual' && re.events.length === 4,
+                        const re = LS_PARSE.parseText(text, 'original-rows.csv');
+                        ok('split: original rows re-ingest as UAL', re.kind === 'ual' && re.events.length === 4,
                             re.kind + '/' + re.events.length);
                         const giant = re.events.filter(function (e) { return (e.extra.itemCount || 0) === 1 && e.actor === 'jo@contoso.com'; });
                         ok('split: oversized JSON still parses after the round trip', giant.length === 1, giant.length);
@@ -430,7 +437,18 @@
                             error: function (m) { ok('split: unparsed-row IP filter runs', false, m); render(); },
                             done: function (tU, sU) {
                                 ok('split: IP inside broken JSON still matches the filter', sU.matched === 1, sU.matched);
-                                LS_SPLIT.splitUal(splitFile, { ip: '203.0.113.9' }, {
+                                LS_SPLIT.splitUal(splitFile, { text: 'rss feeds', families: { Actor: false } }, {
+                                    progress: function () { },
+                                    error: function (m) { ok('split: text filter runs', false, m); render(); },
+                                    done: function (tT, sT) {
+                                        ok('split: text filter reaches inside the JSON', sT.matched === 1, sT.matched);
+                                        const namesT = tT.map(function (x) { return x.filename; });
+                                        ok('split: an unticked discovered table is not written',
+                                            namesT.indexOf('Actor.csv') < 0, namesT.join(','));
+                                        ok('split: unticked tables still appear in the checkbox list',
+                                            sT.families.length === 1 && sT.families[0].enabled === false,
+                                            JSON.stringify(sT.families));
+                                        LS_SPLIT.splitUal(splitFile, { ip: '203.0.113.9' }, {
                                     progress: function () { },
                                     error: function (m) { ok('split: IP filter runs', false, m); render(); },
                                     done: function (tables2, stats2) {
@@ -519,6 +537,8 @@
                                                 });
                                             },
                                         });
+                                    },
+                                });
                                     },
                                 });
                             },

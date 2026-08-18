@@ -38,6 +38,9 @@
     const MAX_COLS = 220;              // guard against pathological key explosion
     const CELL_MAX = 32000;            // Excel refuses a cell beyond 32,767
     const SET_CAP = 40;                // distinct values remembered per IP
+    const MAX_FAMILIES = 12;           // discovered JSON array tables, by frequency
+    const FAMILY_KEYS = 48;            // columns per discovered table
+    const FAMILY_ITEMS = 200;          // array items written per record
 
     /* ------------------------------------------------------------------ CSV */
 
@@ -369,7 +372,7 @@
         return o;
     }
 
-    function matches(filters, ips, user, op, created) {
+    function matches(filters, ips, user, op, created, hay) {
         if (filters.ip) {
             const want = filters.ip.trim().toLowerCase();
             if (want) {
@@ -387,6 +390,11 @@
         }
         if (filters.op) {
             if (String(op || '').toLowerCase().indexOf(filters.op.trim().toLowerCase()) < 0) return false;
+        }
+        if (filters.text) {
+            /* Searches the raw row, so it reaches every corner of the
+               AuditData JSON, including rows whose JSON would not parse. */
+            if (String(hay || '').indexOf(filters.text.trim().toLowerCase()) < 0) return false;
         }
         if (filters.from || filters.to) {
             /* A row with no readable timestamp is kept: losing evidence to a
@@ -411,6 +419,17 @@
         return Date.parse(t);
     }
 
+    /** Top-level arrays of objects that are not already special-cased become
+        their own discovered tables: Actor, Target, AlertLinks and whatever
+        else the workload writes. Pure name/value lists are excluded, they are
+        already full columns in records.csv. */
+    function isFamilyArray(k, v) {
+        return Array.isArray(v) && v.length > 0 &&
+            !CHILD_ARRAYS[k] && k !== 'Folders' &&
+            v.some(x => x !== null && typeof x === 'object' && !Array.isArray(x)) &&
+            !v.every(isNameValue);
+    }
+
     /**
      * Split `file` into tables. Calls back with progress, then with the result:
      *   { tables: [{filename, blob, rows, label}], stats: {...} }
@@ -420,6 +439,7 @@
         let header = null, hmap = null;
         const colCount = new Map();
         const ipStat = new Map();
+        const famStat = new Map();     // family name -> { rows, keys: Map }
         /* Preview reads only the head of the file: enough to show the shape
            without paying for two passes over 175 MB. The last row in the
            slice may be cut mid-record, so the parser is never end()ed and
@@ -437,6 +457,7 @@
             preview: preview, previewPartial: partial, previewBytes: limit,
             template: TEMPLATES[filters.template] ? filters.template : 'all',
             templateMissing: [],
+            families: [], familiesDropped: 0, familyCapped: [],
         };
 
         /* ---------------- pass one: learn the shape of the file ---------------- */
@@ -468,6 +489,25 @@
                     Object.keys(flat).forEach(k => {
                         if (colCount.has(k)) colCount.set(k, colCount.get(k) + 1);
                         else if (colCount.size < MAX_COLS * 3) colCount.set(k, 1);
+                    });
+                    /* Learn every table-like array in the JSON and its columns. */
+                    Object.keys(ad).forEach(k => {
+                        if (!isFamilyArray(k, ad[k])) return;
+                        let f = famStat.get(k);
+                        if (!f) {
+                            if (famStat.size >= MAX_FAMILIES * 2) return;
+                            f = { rows: 0, keys: new Map() };
+                            famStat.set(k, f);
+                        }
+                        f.rows++;
+                        ad[k].slice(0, FAMILY_ITEMS).forEach(item => {
+                            if (!item || typeof item !== 'object' || Array.isArray(item)) return;
+                            const fi = flatten(item, '', Object.create(null));
+                            Object.keys(fi).forEach(fk => {
+                                if (f.keys.has(fk)) f.keys.set(fk, f.keys.get(fk) + 1);
+                                else if (f.keys.size < FAMILY_KEYS * 2) f.keys.set(fk, 1);
+                            });
+                        });
                     });
                     ips = harvestIps(flat, adRaw);
                 } else {
@@ -515,8 +555,9 @@
             let extra;
             if (!tmpl.cols) {
                 extra = ranked.slice(0, MAX_COLS).map(e => e[0]).sort();
-                /* Anything beyond the cap is absent from records.csv but never lost:
-                   subset.csv retains the full record. Say so rather than hiding it. */
+                /* Anything beyond the cap is absent from records.csv but never
+                   lost: original-rows.csv retains the full record. Say so
+                   rather than hiding it. */
                 stats.droppedCols += Math.max(0, ranked.length - MAX_COLS);
             } else {
                 /* Template order is the column order; a family keeps its most
@@ -539,8 +580,29 @@
             const modprop = makeSink('modified-properties.csv', ['RowId', 'RecordId', 'CreationDate', 'UserId', 'Operation', 'Name', 'OldValue', 'NewValue']);
             const mail = makeSink('mail-items.csv', ['RowId', 'RecordId', 'CreationDate', 'UserId', 'Operation', 'FolderPath', 'InternetMessageId', 'SizeInBytes', 'Subject']);
             const affected = makeSink('affected-items.csv', ['RowId', 'RecordId', 'CreationDate', 'UserId', 'Operation', 'Name', 'Value']);
-            const subset = makeSink('subset.csv', null, true);
+            const subset = makeSink('original-rows.csv', null, true);
             const ipsum = makeSink('ip-summary.csv', ['IP', 'Records', 'FirstSeen', 'LastSeen', 'DistinctUsers', 'Users', 'Operations']);
+
+            /* One sink per discovered JSON array table, most frequent first.
+               A checkbox unticks one by name; new discoveries default to on. */
+            const famOff = filters.families || {};
+            const reserved = ['records.csv', 'parameters.csv', 'modified-properties.csv',
+                'mail-items.csv', 'affected-items.csv', 'ip-summary.csv', 'original-rows.csv'];
+            const famRanked = Array.from(famStat.entries()).sort((a, b) => b[1].rows - a[1].rows);
+            stats.familiesDropped = Math.max(0, famRanked.length - MAX_FAMILIES);
+            const famSinks = new Map();
+            famRanked.slice(0, MAX_FAMILIES).forEach(([name, f]) => {
+                stats.families.push({ name: name, records: f.rows, enabled: famOff[name] !== false });
+                if (famOff[name] === false) return;
+                let fn = name.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 40) + '.csv';
+                if (reserved.indexOf(fn) >= 0) fn = 'json-' + fn;
+                const cols = Array.from(f.keys.entries()).sort((a, b) => b[1] - a[1])
+                    .slice(0, FAMILY_KEYS).map(e => e[0]).sort();
+                famSinks.set(name, {
+                    cols: cols,
+                    sink: makeSink(fn, ['RowId', 'RecordId', 'CreationDate', 'UserId', 'Operation', 'Item'].concat(cols)),
+                });
+            });
 
             if (wants('subset')) subset.write(header);
 
@@ -559,7 +621,8 @@
 
                 const flat = ad ? flatten(ad, '', Object.create(null)) : {};
                 const ips = ad ? harvestIps(flat, adRaw) : harvestIps({}, row.join(' '));
-                if (!matches(filters, ips, user, op, created)) return;
+                const hay = filters.text ? row.join('\u0000').toLowerCase() : '';
+                if (!matches(filters, ips, user, op, created, hay)) return;
                 stats.matched++;
 
                 if (wants('subset')) subset.write(row);
@@ -620,6 +683,17 @@
                         });
                     });
                 }
+
+                famSinks.forEach((fs, name) => {
+                    const arr = ad[name];
+                    if (!isFamilyArray(name, arr)) return;
+                    if (arr.length > FAMILY_ITEMS && stats.familyCapped.indexOf(name) < 0) stats.familyCapped.push(name);
+                    arr.slice(0, FAMILY_ITEMS).forEach((item, idx) => {
+                        if (!item || typeof item !== 'object' || Array.isArray(item)) return;
+                        const fi = flatten(item, '', Object.create(null));
+                        fs.sink.write([rowId, recId, created, user, op, idx].concat(fs.cols.map(k => fi[k])));
+                    });
+                });
             });
 
             streamFile(file,
@@ -636,15 +710,19 @@
                             ]));
                     }
 
-                    const tables = [
+                    const fixed = [
                         { id: 'records', label: 'Records, one row per audit event with the JSON flattened into columns', sink: records },
                         { id: 'parameters', label: 'Parameters, operation arguments as name and value', sink: params },
                         { id: 'modified', label: 'Modified properties, what changed from what to what', sink: modprop },
                         { id: 'mail', label: 'Mail items, folders and messages touched', sink: mail },
                         { id: 'affected', label: 'Affected items, files and eDiscovery targets', sink: affected },
                         { id: 'ipsummary', label: 'IP summary, every address in the file with counts', sink: ipsum },
-                        { id: 'subset', label: 'Subset in the original schema, ready to load back into Logscope', sink: subset },
-                    ].filter(t => t.sink.rows > (t.id === 'subset' ? 1 : 0))
+                        { id: 'subset', label: 'The matching rows exactly as Purview wrote them, nothing truncated, ready to load back into Logscope', sink: subset },
+                    ];
+                    famSinks.forEach((fs, name) => {
+                        fixed.push({ id: 'family:' + name, label: 'Rows of the ' + name + ' array inside AuditData, one line per item', sink: fs.sink });
+                    });
+                    const tables = fixed.filter(t => t.sink.rows > (t.id === 'subset' ? 1 : 0))
                         .map(t => ({
                             id: t.id,
                             label: t.label,
