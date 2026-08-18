@@ -17,8 +17,9 @@
      mail-items.csv          Folders[].FolderItems[], one row per message
      affected-items.csv      AffectedItems, for file and eDiscovery operations
      ip-summary.csv          every IP seen, with counts and who used it
-     subset.csv              matching rows in the ORIGINAL schema, so a
+     original-rows.csv       matching rows in the ORIGINAL schema, so a
                              filtered slice can be loaded back into Logscope
+     <Array>.csv             one table per discovered array inside AuditData
 
    Everything joins on `RowId`, which is assigned in file order, and on
    `RecordId` where the export provides one.
@@ -51,7 +52,7 @@
         /* Log fields are attacker-influenced. A cell starting with = + - @ or a
            tab runs as a formula when the CSV opens in Excel, so those cells
            are prefixed with an apostrophe. Plain negative numbers stay
-           numbers; subset.csv (rawCell) keeps the original bytes. */
+           numbers; original-rows.csv (rawCell) keeps the original bytes. */
         if (/^[=+@\t\r]/.test(s) || (s.charAt(0) === '-' && !/^-\d+(\.\d+)?$/.test(s))) s = "'" + s;
         if (/[",\r\n]/.test(s) || /^\s|\s$/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
         return s;
@@ -68,8 +69,8 @@
     const csvRow = arr => arr.map(csvCell).join(',') + '\r\n';
 
     /** Buffered writer. Finished chunks become Blobs so they leave the JS heap.
-        `rawCells` disables the Excel cell cap: subset.csv is re-ingested by the
-        analyser, and truncating a JSON cell would corrupt it silently.
+        `rawCells` disables the Excel cell cap: original-rows.csv is re-ingested
+        by the analyser, and truncating a JSON cell would corrupt it silently.
         The first few rows are kept as `sample` so the UI can show how the
         file will look before anyone opens it in Excel. */
     function makeSink(filename, header, rawCells) {
@@ -584,18 +585,22 @@
             const ipsum = makeSink('ip-summary.csv', ['IP', 'Records', 'FirstSeen', 'LastSeen', 'DistinctUsers', 'Users', 'Operations']);
 
             /* One sink per discovered JSON array table, most frequent first.
-               A checkbox unticks one by name; new discoveries default to on. */
+               A checkbox unticks one by name; new discoveries default to on.
+               Filenames are deduplicated case-insensitively: Windows treats
+               Records.csv and records.csv as the same download. */
             const famOff = filters.families || {};
-            const reserved = ['records.csv', 'parameters.csv', 'modified-properties.csv',
-                'mail-items.csv', 'affected-items.csv', 'ip-summary.csv', 'original-rows.csv'];
+            const usedNames = new Set(['records.csv', 'parameters.csv', 'modified-properties.csv',
+                'mail-items.csv', 'affected-items.csv', 'ip-summary.csv', 'original-rows.csv']);
             const famRanked = Array.from(famStat.entries()).sort((a, b) => b[1].rows - a[1].rows);
             stats.familiesDropped = Math.max(0, famRanked.length - MAX_FAMILIES);
             const famSinks = new Map();
             famRanked.slice(0, MAX_FAMILIES).forEach(([name, f]) => {
                 stats.families.push({ name: name, records: f.rows, enabled: famOff[name] !== false });
                 if (famOff[name] === false) return;
-                let fn = name.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 40) + '.csv';
-                if (reserved.indexOf(fn) >= 0) fn = 'json-' + fn;
+                const base = (name.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 40) || 'array');
+                let fn = base + '.csv', n = 2;
+                while (usedNames.has(fn.toLowerCase())) { fn = base + '-' + (n++) + '.csv'; }
+                usedNames.add(fn.toLowerCase());
                 const cols = Array.from(f.keys.entries()).sort((a, b) => b[1] - a[1])
                     .slice(0, FAMILY_KEYS).map(e => e[0]).sort();
                 famSinks.set(name, {

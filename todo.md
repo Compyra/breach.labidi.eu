@@ -74,7 +74,7 @@ headlessly and is the preferred route.
  Baseline: 7 trees / 153 nodes / 61 plays / 153 terms / 29 defences /
  32 audit ops / 8 log sources / 38 symptoms.
 3. Logscope parser and rules:
- `powershell -File logscope/run-selftest.ps1` → expect `114 / 114 passed`.
+ `powershell -File logscope/run-selftest.ps1` → expect `117 / 117 passed`.
 4. Layout at any width:
  `powershell -File logscope/run-selftest.ps1 -Url "http://.../overflow.html?w=320"`
  Tested clean at 320 / 345 / 360 / 390 / 414 across 29 routes.

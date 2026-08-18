@@ -287,7 +287,8 @@
                 LS_SPLIT.cleanIp('[2001:db8::1]:51142') === '2001:db8::1');
 
             /* Excel-facing cells truncate with a marker; raw cells must not,
-               because subset.csv is re-ingested and JSON does not survive a cut. */
+               because original-rows.csv is re-ingested and JSON does not
+               survive a cut. */
             (function () {
                 const long = 'x'.repeat(40000);
                 ok('excel cell truncates with a marker',
@@ -366,7 +367,7 @@
                     Folders: [{ Path: '\\Inbox', FolderItems: [{ InternetMessageId: '<m1>' }, { InternetMessageId: '<m2>' }] }]
                 });
                 /* r3 is bigger than the 32,767-character Excel cell cap, to prove
-                   subset.csv carries it uncut and re-parseable. */
+                   original-rows.csv carries it uncut and re-parseable. */
                 const ad3 = JSON.stringify({
                     CreationTime: '2026-07-28T11:00:00', Id: 'r3', Operation: 'MailItemsAccessed',
                     UserId: 'jo@contoso.com', Workload: 'Exchange', ClientIP: '198.51.100.7',
@@ -521,12 +522,46 @@
                                                                             done: function (tN, sN) {
                                                                                 ok('split: a file without AuditData is flagged', sN.noAuditData === true && sN.unparsed === 1,
                                                                                     sN.noAuditData + '/' + sN.unparsed);
-                                                                                /* By now DOMContentLoaded has fired and app.js has
-                                                                                   booted, so parse AND runtime errors are visible. */
-                                                                                ok('every script parsed and booted without errors',
-                                                                                    window.__SCRIPT_ERRORS.length === 0, window.__SCRIPT_ERRORS.join(' | '));
-                                                                                ok('the UI module exposed its API', !!(window.LOGSCOPE && window.LOGSCOPE.report));
-                                                                                render();
+
+                                                                                /* A discovered array named like a fixed table must not
+                                                                                   overwrite it in the download folder. */
+                                                                                const clashAd = JSON.stringify({
+                                                                                    CreationTime: '2026-07-29T08:00:00', Id: 'c1', Operation: 'Op',
+                                                                                    UserId: 'kim@contoso.com',
+                                                                                    Records: [{ A: 1 }, { A: 2 }]
+                                                                                });
+                                                                                const clashFile = new File(['CreationDate,UserIds,Operations,AuditData\r\n' +
+                                                                                    '2026-07-29T08:00:00Z,kim@contoso.com,Op,"' + clashAd.replace(/"/g, '""') + '"\r\n'], 'c.csv', { type: 'text/csv' });
+                                                                                LS_SPLIT.splitUal(clashFile, {}, {
+                                                                                    progress: function () { },
+                                                                                    error: function (m) { ok('split: filename clash run works', false, m); render(); },
+                                                                                    done: function (tC) {
+                                                                                        const names = tC.map(function (x) { return x.filename.toLowerCase(); });
+                                                                                        ok('split: a discovered table never collides with a fixed filename',
+                                                                                            names.indexOf('records-2.csv') >= 0 && names.filter(function (x) { return x === 'records.csv'; }).length === 1,
+                                                                                            names.join(','));
+
+                                                                                        /* The offline shell must be installable: one bad path
+                                                                                           aborts the whole service worker install atomically. */
+                                                                                        fetch('../sw.js').then(function (r) { return r.text(); }).then(function (sw) {
+                                                                                            const shell = (sw.match(/'(\.\/[^']*)'/g) || []).map(function (x) { return x.slice(3, -1); });
+                                                                                            ok('sw: shell list found', shell.length > 15, shell.length);
+                                                                                            return Promise.all(shell.map(function (u) {
+                                                                                                return fetch('../' + u).then(function (r) { return r.ok ? null : u; }).catch(function () { return u; });
+                                                                                            }));
+                                                                                        }).then(function (results) {
+                                                                                            const broken = results.filter(function (x) { return x; });
+                                                                                            ok('sw: every shell entry resolves, so the offline install cannot abort',
+                                                                                                broken.length === 0, broken.join(', '));
+                                                                                            /* By now DOMContentLoaded has fired and app.js has
+                                                                                               booted, so parse AND runtime errors are visible. */
+                                                                                            ok('every script parsed and booted without errors',
+                                                                                                window.__SCRIPT_ERRORS.length === 0, window.__SCRIPT_ERRORS.join(' | '));
+                                                                                            ok('the UI module exposed its API', !!(window.LOGSCOPE && window.LOGSCOPE.report));
+                                                                                            render();
+                                                                                        });
+                                                                                    },
+                                                                                });
                                                                             },
                                                                         });
                                                                     },
