@@ -202,23 +202,23 @@
         box.appendChild(el('summary', { text: '🧰 Split a very large Purview export into tables' }));
 
         box.appendChild(el('p', { class: 'muted' }, rich(
-            'For exports too big to analyse in one piece, or any file where the **AuditData** column needs to become real columns. The file is read in slices and never held in memory, so size is not the limit. Nothing leaves this browser.')));
+            'For exports too big to analyse in one piece, or any file where the **AuditData** column needs to become real columns. JSON exports work too: each object in the file becomes one row. The file is read in slices and never held in memory, so size is not the limit. Nothing leaves this browser.')));
 
         const chosen = el('p', { class: 'muted small', id: 'splitChosen', text: pendingBig ? pendingBig.name + '  \u00b7  ' + fmtSize(pendingBig.size) : 'No file chosen yet.' });
 
         const fileIn = el('input', {
-            type: 'file', accept: '.csv,.txt,text/csv', style: 'display:none',
+            type: 'file', accept: '.csv,.txt,.json,.ndjson,text/csv,application/json', style: 'display:none',
             onchange: function () {
                 if (this.files && this.files[0]) {
                     pendingBig = this.files[0];
-                    chosen.textContent = pendingBig.name + '  ·  ' + fmtSize(pendingBig.size);
+                    chosen.textContent = pendingBig.name + '  \u00b7  ' + fmtSize(pendingBig.size);
                 }
                 this.value = '';
             },
         });
         box.appendChild(fileIn);
         box.appendChild(el('div', { class: 'btn-row' }, [
-            el('button', { class: 'btn ghost', type: 'button', onclick: () => fileIn.click() }, 'Choose the CSV'),
+            el('button', { class: 'btn ghost', type: 'button', onclick: () => fileIn.click() }, 'Choose the CSV or JSON'),
         ]));
         box.appendChild(chosen);
 
@@ -315,6 +315,7 @@
             if (filters.from && isNaN(SPLIT.parseUtc(filters.from))) { toast('From date: use YYYY-MM-DD'); fields.from.focus(); return; }
             if (filters.to && isNaN(SPLIT.parseUtc(filters.to))) { toast('To date: use YYYY-MM-DD'); fields.to.focus(); return; }
             filters.template = tsel.value;
+            filters.columns = colPick;
             filters.tables = {};
             let any = false;
             Object.keys(tableChecks).forEach(id => {
@@ -380,9 +381,12 @@
     }
 
     let splitUrls = [];   // blob URLs of the previous run, revoked on replace
+    let colPick = {};      // records.csv column unticks, by column name
 
     /** A compact preview table: header plus the first rows, cells clipped for
-        display only. The downloadable file is never clipped this way. */
+        display only. The downloadable file is never clipped this way. The
+        records.csv header carries a checkbox per column, and columns the
+        splitter computes (rather than copies) are marked "added". */
     function sampleTable(t, open) {
         const wrap = el('details', { class: 'sample' });
         if (open) wrap.open = true;
@@ -392,7 +396,28 @@
         const clip = v => { const s = String(v === undefined ? '' : v); return s.length > 100 ? s.slice(0, 100) + '\u2026' : s; };
         if (t.header) {
             const tr = el('tr');
-            t.header.forEach(h => tr.appendChild(el('th', { text: clip(h) })));
+            t.header.forEach(h => {
+                const th = el('th');
+                const derived = SPLIT.DERIVED_COLS[h];
+                if (t.id === 'records') {
+                    const lab = el('label', { class: 'col-pick', title: derived || ('from the export: ' + h) });
+                    const cbx = el('input', { type: 'checkbox' });
+                    cbx.checked = colPick[h] !== false;
+                    if (h === 'RowId') { cbx.disabled = true; lab.title = derived + '. Always kept: every table joins on it.'; }
+                    cbx.addEventListener('change', () => { colPick[h] = cbx.checked; });
+                    lab.appendChild(cbx);
+                    lab.appendChild(el('span', { text: clip(h) }));
+                    th.appendChild(lab);
+                } else {
+                    th.textContent = clip(h);
+                    if (derived) th.title = derived;
+                }
+                if (derived) {
+                    th.classList.add('derived');
+                    th.appendChild(el('i', { class: 'added-tag', text: 'added' }));
+                }
+                tr.appendChild(th);
+            });
             table.appendChild(tr);
         }
         t.sample.forEach(rowCells => {
@@ -403,6 +428,9 @@
         });
         scroll.appendChild(table);
         wrap.appendChild(scroll);
+        if (t.id === 'records') {
+            wrap.appendChild(el('p', { class: 'muted small', text: 'Untick a column to leave it out of records.csv on the next run. Columns marked "added" do not exist in the export: the splitter computes them (RowId numbers the rows for joining; AllIPs gathers every IP found anywhere in the record).' }));
+        }
         return wrap;
     }
 
@@ -481,6 +509,9 @@
             host.appendChild(el('p', { class: 'muted small', text:
                 'Template columns not present in this file: ' + stats.templateMissing.join(', ') + '. Purview only writes them for the workloads that use them.' }));
         }
+        if (stats.userDropped) {
+            host.appendChild(el('p', { class: 'muted small', text: stats.userDropped + ' column(s) you unticked are left out of records.csv. Tick them again in the preview to bring them back.' }));
+        }
         if (!stats.matched) {
             host.appendChild(el('p', { class: 'lede' }, rich(
                 stats.rows === 0
@@ -518,7 +549,7 @@
         [
             'Open **records.csv** in Excel and use a normal column filter. **AllIPs** holds every address found in the record, so filtering there cannot miss one hidden in the JSON.',
             'The other tables join back on **RowId**, and on **RecordId** where the export provides one.',
-            '**original-rows.csv** is the export exactly as Purview wrote it, only filtered. Its **AuditData** column stays raw JSON on purpose: that is what loads back into the analyser. The same content, unpacked into filterable columns, is **records.csv** and the array tables.',
+            '**original-rows.csv** is the export exactly as it was written, only filtered (for a JSON file, converted to one CSV row per object). Its **AuditData** column stays raw JSON on purpose: that is what loads back into the analyser. The same content, unpacked into filterable columns, is **records.csv** and the array tables.',
             'If you filtered original-rows.csv down below 80 MB you can load it straight back into the analyser above.',
             'In the Excel-facing tables, any cell beyond the 32,767-character limit is marked `...[truncated]` rather than silently cut. The untouched value is always in original-rows.csv.',
             'Log fields can contain hostile text. In the Excel-facing tables, a cell that would start with =, +, - or @ is prefixed with an apostrophe so Excel cannot run it as a formula. original-rows.csv keeps the original bytes.',

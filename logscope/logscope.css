@@ -742,6 +742,33 @@ td .sub {
     letter-spacing: .02em;
 }
 
+.sample-table th.derived {
+    color: var(--accent);
+}
+
+.col-pick {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    cursor: pointer;
+}
+
+.col-pick input {
+    accent-color: var(--accent);
+}
+
+.added-tag {
+    font-style: normal;
+    font-size: .62rem;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    margin-left: .35rem;
+    padding: 0 .3rem;
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    color: var(--accent);
+}
+
 .sample-table tr:last-child td {
     border-bottom: 0;
 }

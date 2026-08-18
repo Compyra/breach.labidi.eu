@@ -139,6 +139,42 @@
         };
     }
 
+    /**
+     * Incremental splitter for JSON exports: an array of objects, a single
+     * wrapper object, or NDJSON. Emits the raw text of each complete
+     * top-level object, so a JSON file becomes AuditData-style records
+     * without ever holding the whole file as one string.
+     */
+    function makeJsonStream(onObject) {
+        let depth = 0, buf = '', inString = false, escaped = false, started = false;
+        return {
+            push(text) {
+                if (!started) { started = true; if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1); }
+                for (let i = 0; i < text.length; i++) {
+                    const c = text[i];
+                    if (depth === 0) {
+                        if (c === '{') { depth = 1; buf = c; }
+                        continue;              // skip [ ] , whitespace between objects
+                    }
+                    buf += c;
+                    if (inString) {
+                        if (escaped) { escaped = false; continue; }
+                        if (c === '\\') { escaped = true; continue; }
+                        if (c === '"') inString = false;
+                        continue;
+                    }
+                    if (c === '"') { inString = true; continue; }
+                    if (c === '{') depth++;
+                    else if (c === '}') {
+                        depth--;
+                        if (depth === 0) { onObject(buf); buf = ''; }
+                    }
+                }
+            },
+            end() { },
+        };
+    }
+
     /** Read a File in slices, decoding as UTF-8 across boundaries.
         `limit` stops after that many bytes: enough for a preview. */
     function streamFile(file, onText, onDone, onError, onProgress, limit) {
@@ -302,6 +338,13 @@
         'RecordType', 'ResultStatus', 'ClientIP', 'AllIPs',
     ];
 
+    /* Columns the splitter creates rather than copies from the export. The
+       UI marks them so nobody hunts for AllIPs in Purview. */
+    const DERIVED_COLS = {
+        RowId: 'added by the splitter: row number in file order, the join key for every table',
+        AllIPs: 'added by the splitter: every IP address found anywhere in the record, including inside the JSON',
+    };
+
     /* Column templates for records.csv. An entry ending in '.' matches every
        flattened key in that family; anything else matches one key, case
        insensitively. BASE_COLS are always present, so who, when, what and
@@ -461,9 +504,44 @@
             families: [], familiesDropped: 0, familyCapped: [],
         };
 
+        /* One row stream for both input kinds. A JSON export (an array of
+           objects, one wrapper object, or NDJSON) is converted on the fly:
+           each object becomes one AuditData-style row, and the rest of the
+           pipeline is identical. */
+        const JSON_HEADER = ['CreationDate', 'UserIds', 'Operations', 'AuditData'];
+        let jsonMode = false;
+        function makeSource(onRow) {
+            let inner = null;
+            return {
+                push(text) {
+                    if (!inner) {
+                        const first = text.replace(/^\uFEFF/, '').match(/\S/);
+                        jsonMode = !!first && (first[0] === '{' || first[0] === '[');
+                        if (jsonMode) {
+                            header = JSON_HEADER.slice();
+                            hmap = headerIndex(header);
+                            stats.noAuditData = false;
+                            stats.jsonSource = true;
+                            inner = makeJsonStream(function (objText) {
+                                const o = parseJson(objText);
+                                const created = (o && pick(o, ['CreationTime', 'createdDateTime', 'activityDateTime', 'timestamp', 'time'])) || '';
+                                const user = (o && pick(o, ['UserId', 'userPrincipalName', 'UserKey'])) || '';
+                                const op = (o && pick(o, ['Operation', 'operationName', 'activityDisplayName'])) || '';
+                                onRow([String(created), String(user), String(op), objText]);
+                            });
+                        } else {
+                            inner = makeCsvStream(onRow);
+                        }
+                    }
+                    inner.push(text);
+                },
+                end() { if (inner) inner.end(); },
+            };
+        }
+
         /* ---------------- pass one: learn the shape of the file ---------------- */
         function passOne() {
-            const csv = makeCsvStream(function (row) {
+            const src = makeSource(function (row) {
                 if (!header) {
                     header = row.slice();
                     hmap = headerIndex(header);
@@ -477,9 +555,9 @@
                 const o = rowObject(header, row);
                 const adRaw = pick(o, ['AuditData', 'auditdata']);
                 const ad = parseJson(adRaw);
-                const created = (ad && pick(ad, ['CreationTime'])) || pick(o, ['CreationDate']);
-                const user = (ad && pick(ad, ['UserId'])) || pick(o, ['UserIds']);
-                const op = (ad && pick(ad, ['Operation'])) || pick(o, ['Operations']);
+                const created = (ad && pick(ad, ['CreationTime'])) || pick(o, ['CreationDate', 'CreationTime']);
+                const user = (ad && pick(ad, ['UserId'])) || pick(o, ['UserIds', 'UserId']);
+                const op = (ad && pick(ad, ['Operation'])) || pick(o, ['Operations', 'Operation']);
                 let ips;
                 if (ad) {
                     stats.parsed++;
@@ -540,8 +618,8 @@
                 });
             });
             streamFile(file,
-                t => csv.push(t),
-                () => { if (!partial) csv.end(); stats.ips = ipStat.size; passTwo(); },
+                t => src.push(t),
+                () => { if (!partial) src.end(); stats.ips = ipStat.size; passTwo(); },
                 e => cb.error('Could not read the file: ' + (e && e.message ? e.message : e)),
                 (a, b) => cb.progress('Reading and indexing', a, b, 0),
                 limit);
@@ -576,7 +654,15 @@
             }
             stats.availableCols = ranked.length;
 
-            const records = makeSink('records.csv', BASE_COLS.concat(extra));
+            /* Preview checkboxes can drop any column except the RowId join key. */
+            const colOff = filters.columns || null;
+            const droppedCol = c => !!colOff && colOff[c] === false && c !== 'RowId';
+            const keepBase = BASE_COLS.filter(c => !droppedCol(c));
+            const extraKept = extra.filter(k => !droppedCol(k));
+            stats.userDropped = (BASE_COLS.length - keepBase.length) + (extra.length - extraKept.length);
+            extra = extraKept;
+
+            const records = makeSink('records.csv', keepBase.concat(extra));
             const params = makeSink('parameters.csv', ['RowId', 'RecordId', 'CreationDate', 'UserId', 'Operation', 'Source', 'Name', 'Value']);
             const modprop = makeSink('modified-properties.csv', ['RowId', 'RecordId', 'CreationDate', 'UserId', 'Operation', 'Name', 'OldValue', 'NewValue']);
             const mail = makeSink('mail-items.csv', ['RowId', 'RecordId', 'CreationDate', 'UserId', 'Operation', 'FolderPath', 'InternetMessageId', 'SizeInBytes', 'Subject']);
@@ -611,17 +697,17 @@
 
             if (wants('subset')) subset.write(header);
 
-            let hdr2 = null, rowId = 0;
-            const csv = makeCsvStream(function (row) {
+            let hdr2 = jsonMode, rowId = 0;
+            const src = makeSource(function (row) {
                 if (!hdr2) { hdr2 = true; return; }
                 if (row.length === 1 && row[0] === '') return;
                 rowId++;
                 const o = rowObject(header, row);
                 const adRaw = pick(o, ['AuditData', 'auditdata']);
                 const ad = parseJson(adRaw);
-                const created = (ad && pick(ad, ['CreationTime'])) || pick(o, ['CreationDate']);
-                const user = (ad && pick(ad, ['UserId'])) || pick(o, ['UserIds']);
-                const op = (ad && pick(ad, ['Operation'])) || pick(o, ['Operations']);
+                const created = (ad && pick(ad, ['CreationTime'])) || pick(o, ['CreationDate', 'CreationTime']);
+                const user = (ad && pick(ad, ['UserId'])) || pick(o, ['UserIds', 'UserId']);
+                const op = (ad && pick(ad, ['Operation'])) || pick(o, ['Operations', 'Operation']);
                 const recId = (ad && pick(ad, ['Id', 'RecordId'])) || pick(o, ['Identity', 'RecordId']);
 
                 const flat = ad ? flatten(ad, '', Object.create(null)) : {};
@@ -633,7 +719,7 @@
                 if (wants('subset')) subset.write(row);
 
                 if (wants('records')) {
-                    const base = [
+                    const baseAll = [
                         rowId, recId, created, user, op,
                         (ad && pick(ad, ['Workload'])) || '',
                         (ad && pick(ad, ['RecordType'])) || pick(o, ['RecordType']),
@@ -641,6 +727,10 @@
                         (ad && cleanIp(pick(ad, ['ClientIP', 'ClientIPAddress', 'ActorIpAddress']))) || '',
                         ips.join('; '),
                     ];
+                    const base = [];
+                    for (let bi = 0; bi < BASE_COLS.length; bi++) {
+                        if (!droppedCol(BASE_COLS[bi])) base.push(baseAll[bi]);
+                    }
                     records.write(base.concat(extra.map(k => flat[k])));
                 }
 
@@ -702,9 +792,9 @@
             });
 
             streamFile(file,
-                t => csv.push(t),
+                t => src.push(t),
                 function () {
-                    if (!partial) csv.end();
+                    if (!partial) src.end();
                     if (wants('ipsummary')) {
                         Array.from(ipStat.entries())
                             .sort((a, b) => b[1].n - a[1].n)
@@ -740,8 +830,8 @@
 
                     stats.topOps = Array.from(stats.ops.entries()).sort((a, b) => b[1] - a[1]).slice(0, 12);
                     stats.userCount = stats.users.size;
-                    stats.columns = extra.length + BASE_COLS.length;
-                    stats.baseCols = BASE_COLS.length;
+                    stats.columns = extra.length + keepBase.length;
+                    stats.baseCols = keepBase.length;
                     cb.done(tables, stats);
                 },
                 e => cb.error('Could not read the file: ' + (e && e.message ? e.message : e)),
@@ -754,6 +844,6 @@
 
     window.LS_SPLIT = {
         splitUal, flatten, cleanIp, validIp, isIpv6, harvestIps,
-        makeCsvStream, csvCell, csvRow, parseUtc, TEMPLATES,
+        makeCsvStream, makeJsonStream, csvCell, csvRow, parseUtc, TEMPLATES, DERIVED_COLS,
     };
 })();

@@ -23,7 +23,11 @@ its own table with a checkbox). The panel lets you pick which tables to
 write, offers column templates for records.csv (sign-ins, devices, mailbox,
 files), a free-text filter that searches inside the JSON, and a preview that
 reads only the head of the file and shows how every table will look before
-anything is written. `original-rows.csv` (formerly subset.csv) is the export
+anything is written. The records.csv preview carries a checkbox per column
+(untick to leave one out; RowId always stays, every table joins on it) and
+marks the columns the splitter computes (RowId, AllIPs) as "added". JSON
+exports work too: each object becomes one row, converted on the fly.
+`original-rows.csv` (formerly subset.csv) is the export
 exactly as Purview wrote it, filtered, nothing truncated, reloadable. The
 analyser itself still holds rows in memory and stops at 80 MB.
 
@@ -74,7 +78,7 @@ headlessly and is the preferred route.
  Baseline: 7 trees / 153 nodes / 61 plays / 153 terms / 29 defences /
  32 audit ops / 8 log sources / 38 symptoms.
 3. Logscope parser and rules:
- `powershell -File logscope/run-selftest.ps1` → expect `117 / 117 passed`.
+ `powershell -File logscope/run-selftest.ps1` → expect `122 / 122 passed`.
 4. Layout at any width:
  `powershell -File logscope/run-selftest.ps1 -Url "http://.../overflow.html?w=320"`
  Tested clean at 320 / 345 / 360 / 390 / 414 across 29 routes.
