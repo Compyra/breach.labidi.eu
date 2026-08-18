@@ -61,16 +61,24 @@
 
     /** Buffered writer. Finished chunks become Blobs so they leave the JS heap.
         `rawCells` disables the Excel cell cap: subset.csv is re-ingested by the
-        analyser, and truncating a JSON cell would corrupt it silently. */
+        analyser, and truncating a JSON cell would corrupt it silently.
+        The first few rows are kept as `sample` so the UI can show how the
+        file will look before anyone opens it in Excel. */
     function makeSink(filename, header, rawCells) {
         const parts = [];
         const cell = rawCells ? rawCell : csvCell;
+        const sample = [];
         let buf = '\uFEFF';            // BOM, so Excel reads UTF-8 correctly
         let rows = 0;
         if (header) buf += csvRow(header);
         return {
             filename: filename,
+            header: header || null,
+            sample: sample,
             write(arr) {
+                if (sample.length < 6) {
+                    sample.push(arr.map(x => (x === null || x === undefined) ? '' : String(x)));
+                }
                 buf += arr.map(cell).join(',') + '\r\n';
                 rows++;
                 if (buf.length > FLUSH) { parts.push(new Blob([buf])); buf = ''; }
@@ -122,12 +130,14 @@
         };
     }
 
-    /** Read a File in slices, decoding as UTF-8 across boundaries. */
-    function streamFile(file, onText, onDone, onError, onProgress) {
+    /** Read a File in slices, decoding as UTF-8 across boundaries.
+        `limit` stops after that many bytes: enough for a preview. */
+    function streamFile(file, onText, onDone, onError, onProgress, limit) {
         const dec = new TextDecoder('utf-8');
+        const end = Math.min(file.size, limit || file.size);
         let offset = 0;
         function step() {
-            if (offset >= file.size) {
+            if (offset >= end) {
                 const tail = dec.decode();
                 if (tail) onText(tail);
                 onDone();
@@ -142,12 +152,12 @@
                     return;
                 }
                 offset += CHUNK;
-                if (onProgress) onProgress(Math.min(offset, file.size), file.size);
+                if (onProgress) onProgress(Math.min(offset, end), end);
                 /* Yield so the browser can paint the progress bar. */
                 setTimeout(step, 0);
             };
             fr.onerror = () => onError(fr.error || new Error('read failed'));
-            fr.readAsArrayBuffer(file.slice(offset, offset + CHUNK));
+            fr.readAsArrayBuffer(file.slice(offset, Math.min(offset + CHUNK, end)));
         }
         step();
     }
@@ -219,10 +229,19 @@
         AffectedItems: 'affected',
     };
 
+    /** Purview writes many arrays as [{Name, Value}, ...]. Collapsed into
+        `Family.Name` columns they become filterable in Excel, which is where
+        DeviceProperties.OS, DeviceProperties.BrowserType and
+        ExtendedProperties.UserAgent come from. */
+    const isNameValue = x => x !== null && typeof x === 'object' && !Array.isArray(x) &&
+        typeof x.Name === 'string' && x.Name !== '' &&
+        Object.keys(x).every(k => k === 'Name' || k === 'Value');
+
     /**
      * Walk the AuditData object into flat `Dotted.Path` scalars. Arrays named
-     * above are skipped here and emitted as child rows instead; other arrays
-     * of scalars are joined, and short arrays of objects are indexed.
+     * above are skipped here and emitted as child rows instead; name/value
+     * pair arrays become `Family.Name` columns; other arrays of scalars are
+     * joined, and short arrays of objects are indexed.
      */
     function flatten(obj, prefix, out, depth) {
         out = out || {};
@@ -233,6 +252,10 @@
             const key = prefix ? prefix + '.' + k : k;
             if (v === null || v === undefined) return;
             if (Array.isArray(v)) {
+                if (v.length && v.every(isNameValue)) {
+                    v.forEach(x => { out[key + '.' + x.Name] = x.Value === undefined ? '' : x.Value; });
+                    return;
+                }
                 if (!prefix && CHILD_ARRAYS[k]) return;          // handled as a table
                 if (k === 'Folders' && !prefix) return;          // handled as a table
                 if (!v.length) return;
@@ -263,6 +286,57 @@
         'RowId', 'RecordId', 'CreationDate', 'UserId', 'Operation', 'Workload',
         'RecordType', 'ResultStatus', 'ClientIP', 'AllIPs',
     ];
+
+    /* Column templates for records.csv. An entry ending in '.' matches every
+       flattened key in that family; anything else matches one key, case
+       insensitively. BASE_COLS are always present, so who, when, what and
+       from where survive every template. */
+    const TEMPLATES = {
+        all: { label: 'Everything (most common columns first)', cols: null },
+        signin: {
+            label: 'Sign-ins and identity',
+            cols: ['UserKey', 'UserType', 'ObjectId', 'Id', 'ApplicationId',
+                'AzureActiveDirectoryEventType', 'LogonError', 'ActorIpAddress',
+                'ActorUPN', 'Actor.', 'Target.', 'TargetUserOrGroupName',
+                'ExtendedProperties.RequestType', 'ExtendedProperties.ResultStatusDetail',
+                'ExtendedProperties.UserAgent', 'AppAccessContext.'],
+        },
+        device: {
+            label: 'Devices, browsers and agents',
+            cols: ['ActorIpAddress', 'DeviceProperties.', 'DeviceDisplayName',
+                'ExtendedProperties.UserAgent', 'UserAgent', 'BrowserName', 'BrowserVersion',
+                'Platform', 'ClientInfoString', 'ClientAppId', 'AppId', 'ClientVersion',
+                'ClientProcessName', 'GeoLocation'],
+        },
+        mail: {
+            label: 'Mailbox activity',
+            cols: ['MailboxOwnerUPN', 'MailboxGuid', 'LogonType', 'InternalLogonType',
+                'LogonUserSid', 'ClientInfoString', 'ClientIPAddress', 'ClientProcessName',
+                'ClientVersion', 'OperationProperties.', 'OperationCount', 'Item.',
+                'Folder.', 'DestFolder.', 'CrossMailboxOperation', 'SendAsUserSmtp',
+                'SendOnBehalfOfUserSmtp', 'SaveToSentItems', 'Subject', 'MessageId'],
+        },
+        files: {
+            label: 'Files, SharePoint and OneDrive',
+            cols: ['ObjectId', 'SiteUrl', 'SourceRelativeUrl', 'SourceFileName',
+                'SourceFileExtension', 'ItemType', 'EventSource', 'ListId',
+                'ListItemUniqueId', 'WebId', 'TargetUserOrGroupName', 'TargetUserOrGroupType',
+                'UserAgent', 'ApplicationDisplayName', 'AuthenticationType',
+                'BrowserName', 'BrowserVersion', 'Platform', 'DeviceDisplayName', 'GeoLocation'],
+        },
+    };
+
+    /** Expand one template entry against the keys seen in the file. */
+    function templateHits(entry, rankedKeys, seen) {
+        const isFam = entry.charAt(entry.length - 1) === '.';
+        const want = (isFam ? entry.slice(0, -1) : entry).toLowerCase();
+        return rankedKeys.filter(k => {
+            if (seen.has(k)) return false;
+            const lk = k.toLowerCase();
+            if (isFam) return lk === want || lk.indexOf(want + '.') === 0 || lk.indexOf(want + '[') === 0;
+            return lk === want;
+        });
+    }
 
     function pick(obj, names) {
         for (let i = 0; i < names.length; i++) {
@@ -327,10 +401,23 @@
         let header = null, hmap = null;
         const colCount = new Map();
         const ipStat = new Map();
+        /* Preview reads only the head of the file: enough to show the shape
+           without paying for two passes over 175 MB. The last row in the
+           slice may be cut mid-record, so the parser is never end()ed and
+           the partial tail is discarded. */
+        const PREVIEW_BYTES = 2 * CHUNK;
+        const preview = !!filters.preview;
+        const limit = preview ? Math.min(file.size, PREVIEW_BYTES) : file.size;
+        const partial = limit < file.size;
+        const chosen = filters.tables || null;
+        const wants = id => !chosen || !!chosen[id];
         const stats = {
             rows: 0, parsed: 0, unparsed: 0, matched: 0,
             first: '', last: '', ips: 0, users: new Set(), ops: new Map(),
             usersCapped: false, droppedCols: 0,
+            preview: preview, previewPartial: partial, previewBytes: limit,
+            template: TEMPLATES[filters.template] ? filters.template : 'all',
+            templateMissing: [],
         };
 
         /* ---------------- pass one: learn the shape of the file ---------------- */
@@ -387,9 +474,10 @@
             });
             streamFile(file,
                 t => csv.push(t),
-                () => { csv.end(); stats.ips = ipStat.size; passTwo(); },
+                () => { if (!partial) csv.end(); stats.ips = ipStat.size; passTwo(); },
                 e => cb.error('Could not read the file: ' + (e && e.message ? e.message : e)),
-                (a, b) => cb.progress('Reading and indexing', a, b, 0));
+                (a, b) => cb.progress('Reading and indexing', a, b, 0),
+                limit);
         }
 
         /* ---------------- pass two: write the tables ---------------- */
@@ -397,10 +485,28 @@
             const ranked = Array.from(colCount.entries())
                 .filter(e => BASE_COLS.indexOf(e[0]) < 0)
                 .sort((a, b) => b[1] - a[1]);
-            const extra = ranked.slice(0, MAX_COLS).map(e => e[0]).sort();
-            /* Anything beyond the cap is absent from records.csv but never lost:
-               subset.csv retains the full record. Say so rather than hiding it. */
-            stats.droppedCols += Math.max(0, ranked.length - MAX_COLS);
+            const tmpl = TEMPLATES[stats.template];
+            let extra;
+            if (!tmpl.cols) {
+                extra = ranked.slice(0, MAX_COLS).map(e => e[0]).sort();
+                /* Anything beyond the cap is absent from records.csv but never lost:
+                   subset.csv retains the full record. Say so rather than hiding it. */
+                stats.droppedCols += Math.max(0, ranked.length - MAX_COLS);
+            } else {
+                /* Template order is the column order; a family keeps its most
+                   frequent key first. Entries with no match are reported so a
+                   surprising Excel file explains itself. */
+                const rankedKeys = ranked.map(e => e[0]);
+                const seen = new Set();
+                extra = [];
+                tmpl.cols.forEach(entry => {
+                    const hits = templateHits(entry, rankedKeys, seen);
+                    if (!hits.length) { stats.templateMissing.push(entry); return; }
+                    hits.forEach(k => { seen.add(k); extra.push(k); });
+                });
+                extra = extra.slice(0, MAX_COLS);
+            }
+            stats.availableCols = ranked.length;
 
             const records = makeSink('records.csv', BASE_COLS.concat(extra));
             const params = makeSink('parameters.csv', ['RowId', 'RecordId', 'CreationDate', 'UserId', 'Operation', 'Source', 'Name', 'Value']);
@@ -410,7 +516,7 @@
             const subset = makeSink('subset.csv', null, true);
             const ipsum = makeSink('ip-summary.csv', ['IP', 'Records', 'FirstSeen', 'LastSeen', 'DistinctUsers', 'Users', 'Operations']);
 
-            subset.write(header);
+            if (wants('subset')) subset.write(header);
 
             let hdr2 = null, rowId = 0;
             const csv = makeCsvStream(function (row) {
@@ -430,42 +536,49 @@
                 if (!matches(filters, ips, user, op, created)) return;
                 stats.matched++;
 
-                subset.write(row);
+                if (wants('subset')) subset.write(row);
 
-                const base = [
-                    rowId, recId, created, user, op,
-                    (ad && pick(ad, ['Workload'])) || '',
-                    (ad && pick(ad, ['RecordType'])) || pick(o, ['RecordType']),
-                    (ad && pick(ad, ['ResultStatus'])) || '',
-                    (ad && cleanIp(pick(ad, ['ClientIP', 'ClientIPAddress', 'ActorIpAddress']))) || '',
-                    ips.join('; '),
-                ];
-                records.write(base.concat(extra.map(k => flat[k])));
+                if (wants('records')) {
+                    const base = [
+                        rowId, recId, created, user, op,
+                        (ad && pick(ad, ['Workload'])) || '',
+                        (ad && pick(ad, ['RecordType'])) || pick(o, ['RecordType']),
+                        (ad && pick(ad, ['ResultStatus'])) || '',
+                        (ad && cleanIp(pick(ad, ['ClientIP', 'ClientIPAddress', 'ActorIpAddress']))) || '',
+                        ips.join('; '),
+                    ];
+                    records.write(base.concat(extra.map(k => flat[k])));
+                }
 
                 if (!ad) return;
 
-                Object.keys(CHILD_ARRAYS).forEach(name => {
-                    const arr = ad[name];
-                    if (!Array.isArray(arr)) return;
-                    arr.forEach(item => {
-                        if (!item || typeof item !== 'object') return;
-                        if (CHILD_ARRAYS[name] === 'modified') {
-                            modprop.write([rowId, recId, created, user, op,
-                                item.Name || item.displayName || '',
-                                item.OldValue !== undefined ? item.OldValue : (item.oldValue || ''),
-                                item.NewValue !== undefined ? item.NewValue : (item.newValue || '')]);
-                        } else if (CHILD_ARRAYS[name] === 'affected') {
-                            affected.write([rowId, recId, created, user, op,
-                                item.Name || item.Type || '',
-                                item.Id || item.Value || JSON.stringify(item).slice(0, 400)]);
-                        } else {
-                            params.write([rowId, recId, created, user, op, name,
-                                item.Name || '', item.Value === undefined ? '' : item.Value]);
-                        }
+                if (wants('parameters') || wants('modified') || wants('affected')) {
+                    Object.keys(CHILD_ARRAYS).forEach(name => {
+                        const arr = ad[name];
+                        if (!Array.isArray(arr)) return;
+                        arr.forEach(item => {
+                            if (!item || typeof item !== 'object') return;
+                            if (CHILD_ARRAYS[name] === 'modified') {
+                                if (!wants('modified')) return;
+                                modprop.write([rowId, recId, created, user, op,
+                                    item.Name || item.displayName || '',
+                                    item.OldValue !== undefined ? item.OldValue : (item.oldValue || ''),
+                                    item.NewValue !== undefined ? item.NewValue : (item.newValue || '')]);
+                            } else if (CHILD_ARRAYS[name] === 'affected') {
+                                if (!wants('affected')) return;
+                                affected.write([rowId, recId, created, user, op,
+                                    item.Name || item.Type || '',
+                                    item.Id || item.Value || JSON.stringify(item).slice(0, 400)]);
+                            } else {
+                                if (!wants('parameters')) return;
+                                params.write([rowId, recId, created, user, op, name,
+                                    item.Name || '', item.Value === undefined ? '' : item.Value]);
+                            }
+                        });
                     });
-                });
+                }
 
-                if (Array.isArray(ad.Folders)) {
+                if (wants('mail') && Array.isArray(ad.Folders)) {
                     ad.Folders.forEach(f => {
                         const path = (f && f.Path) || '';
                         const items = (f && f.FolderItems) || [];
@@ -486,29 +599,34 @@
             streamFile(file,
                 t => csv.push(t),
                 function () {
-                    csv.end();
-                    Array.from(ipStat.entries())
-                        .sort((a, b) => b[1].n - a[1].n)
-                        .forEach(([ip, s]) => ipsum.write([
-                            ip, s.n, s.first, s.last, s.users.size,
-                            Array.from(s.users).join('; '),
-                            Array.from(s.ops).join('; '),
-                        ]));
+                    if (!partial) csv.end();
+                    if (wants('ipsummary')) {
+                        Array.from(ipStat.entries())
+                            .sort((a, b) => b[1].n - a[1].n)
+                            .forEach(([ip, s]) => ipsum.write([
+                                ip, s.n, s.first, s.last, s.users.size,
+                                Array.from(s.users).join('; '),
+                                Array.from(s.ops).join('; '),
+                            ]));
+                    }
 
                     const tables = [
-                        { label: 'Records, one row per audit event with the JSON flattened into columns', sink: records },
-                        { label: 'Parameters, operation arguments as name and value', sink: params },
-                        { label: 'Modified properties, what changed from what to what', sink: modprop },
-                        { label: 'Mail items, folders and messages touched', sink: mail },
-                        { label: 'Affected items, files and eDiscovery targets', sink: affected },
-                        { label: 'IP summary, every address in the file with counts', sink: ipsum },
-                        { label: 'Subset in the original schema, ready to load back into Logscope', sink: subset },
-                    ].filter(t => t.sink.rows > 0)
+                        { id: 'records', label: 'Records, one row per audit event with the JSON flattened into columns', sink: records },
+                        { id: 'parameters', label: 'Parameters, operation arguments as name and value', sink: params },
+                        { id: 'modified', label: 'Modified properties, what changed from what to what', sink: modprop },
+                        { id: 'mail', label: 'Mail items, folders and messages touched', sink: mail },
+                        { id: 'affected', label: 'Affected items, files and eDiscovery targets', sink: affected },
+                        { id: 'ipsummary', label: 'IP summary, every address in the file with counts', sink: ipsum },
+                        { id: 'subset', label: 'Subset in the original schema, ready to load back into Logscope', sink: subset },
+                    ].filter(t => t.sink.rows > (t.id === 'subset' ? 1 : 0))
                         .map(t => ({
+                            id: t.id,
                             label: t.label,
                             filename: t.sink.filename,
-                            rows: t.sink.rows,
-                            blob: t.sink.blob(),
+                            rows: t.id === 'subset' ? t.sink.rows - 1 : t.sink.rows,
+                            header: t.sink.header || (t.id === 'subset' ? t.sink.sample[0] : null),
+                            sample: t.id === 'subset' ? t.sink.sample.slice(1) : t.sink.sample,
+                            blob: preview ? null : t.sink.blob(),
                         }));
 
                     stats.topOps = Array.from(stats.ops.entries()).sort((a, b) => b[1] - a[1]).slice(0, 12);
@@ -517,7 +635,8 @@
                     cb.done(tables, stats);
                 },
                 e => cb.error('Could not read the file: ' + (e && e.message ? e.message : e)),
-                (a, b) => cb.progress('Building the tables', a, b, 1));
+                (a, b) => cb.progress('Building the tables', a, b, 1),
+                limit);
         }
 
         passOne();
@@ -525,6 +644,6 @@
 
     window.LS_SPLIT = {
         splitUal, flatten, cleanIp, validIp, isIpv6, harvestIps,
-        makeCsvStream, csvCell, csvRow, parseUtc,
+        makeCsvStream, csvCell, csvRow, parseUtc, TEMPLATES,
     };
 })();

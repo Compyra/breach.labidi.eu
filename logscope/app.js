@@ -243,46 +243,93 @@
         box.appendChild(el('p', { class: 'muted small' }, rich(
             'The **IP** filter matches any address found anywhere in the record, including inside the JSON. Leave everything blank to convert the whole file.')));
 
+        box.appendChild(el('p', { class: 'sub-h', text: 'Which tables do you need?' }));
+        const tableDefs = [
+            ['records', 'records.csv', 'one row per event, the JSON as columns'],
+            ['parameters', 'parameters.csv', 'operation arguments, name and value'],
+            ['modified', 'modified-properties.csv', 'what changed, old and new value'],
+            ['mail', 'mail-items.csv', 'folders and messages touched'],
+            ['affected', 'affected-items.csv', 'files and eDiscovery targets'],
+            ['ipsummary', 'ip-summary.csv', 'every address with counts'],
+            ['subset', 'subset.csv', 'original schema, loads back into Logscope'],
+        ];
+        const tableChecks = {};
+        const twrap = el('div', { class: 'split-tables' });
+        tableDefs.forEach(([id, name, hint]) => {
+            const lab = el('label', { class: 'split-check', title: hint });
+            const cbx = el('input', { type: 'checkbox' });
+            cbx.checked = true;
+            tableChecks[id] = cbx;
+            lab.appendChild(cbx);
+            lab.appendChild(el('span', { text: name }));
+            twrap.appendChild(lab);
+        });
+        box.appendChild(twrap);
+        box.appendChild(el('p', { class: 'muted small', text: 'Tables with no rows are skipped automatically. Keep subset.csv ticked if you may want to reload the result into the analyser.' }));
+
+        box.appendChild(el('p', { class: 'sub-h', text: 'Columns in records.csv' }));
+        const tsel = el('select', { class: 'split-select', 'aria-label': 'Column template for records.csv' });
+        Object.keys(SPLIT.TEMPLATES).forEach(id => {
+            tsel.appendChild(el('option', { value: id, text: SPLIT.TEMPLATES[id].label }));
+        });
+        box.appendChild(tsel);
+        box.appendChild(el('p', { class: 'muted small', text: 'The join and who-when-what columns (RowId, RecordId, CreationDate, UserId, Operation, Workload, RecordType, ResultStatus, ClientIP, AllIPs) are always included. A template only changes which JSON columns follow them.' }));
+
         const status = el('p', { class: 'muted', 'aria-live': 'polite' });
         const bar = el('div', { class: 'progress', hidden: true }, el('i'));
         const results = el('div');
 
-        const goBtn = el('button', {
-            class: 'btn', type: 'button',
-            onclick: function () {
-                if (!pendingBig) { toast('Choose the CSV first'); return; }
-                const filters = {};
-                Object.keys(fields).forEach(k => { filters[k] = fields[k].value.trim(); });
-                goBtn.disabled = true;
-                results.textContent = '';
-                bar.hidden = false;
-                status.textContent = 'Starting...';
-                SPLIT.splitUal(pendingBig, filters, {
-                    progress(phase, done, total, pass) {
-                        const pct = total ? done / total : 0;
-                        const overall = Math.round(((pass + pct) / 2) * 100);
-                        bar.firstChild.style.width = overall + '%';
-                        status.textContent = phase + ': ' + fmtSize(done) + ' of ' + fmtSize(total) +
-                            '  (pass ' + (pass + 1) + ' of 2)';
-                    },
-                    error(msg) {
-                        goBtn.disabled = false;
-                        bar.hidden = true;
-                        status.textContent = msg;
-                        toast('Split failed');
-                    },
-                    done(tables, stats) {
-                        goBtn.disabled = false;
-                        bar.firstChild.style.width = '100%';
-                        renderSplitResult(results, tables, stats);
-                        status.textContent = 'Done.';
-                        toast(stats.matched.toLocaleString() + ' records written');
-                    },
-                });
-            },
-        }, 'Split into tables');
+        let previewBtn;
+        function run(preview) {
+            if (!pendingBig) { toast('Choose the CSV first'); return; }
+            const filters = { preview: preview };
+            Object.keys(fields).forEach(k => { filters[k] = fields[k].value.trim(); });
+            filters.template = tsel.value;
+            filters.tables = {};
+            let any = false;
+            Object.keys(tableChecks).forEach(id => {
+                filters.tables[id] = tableChecks[id].checked;
+                if (tableChecks[id].checked) any = true;
+            });
+            if (!any) { toast('Tick at least one table'); return; }
+            goBtn.disabled = true;
+            previewBtn.disabled = true;
+            results.textContent = '';
+            bar.hidden = false;
+            status.textContent = 'Starting...';
+            SPLIT.splitUal(pendingBig, filters, {
+                progress(phase, done, total, pass) {
+                    const pct = total ? done / total : 0;
+                    const overall = Math.round(((pass + pct) / 2) * 100);
+                    bar.firstChild.style.width = overall + '%';
+                    status.textContent = phase + ': ' + fmtSize(done) + ' of ' + fmtSize(total) +
+                        '  (pass ' + (pass + 1) + ' of 2)';
+                },
+                error(msg) {
+                    goBtn.disabled = false;
+                    previewBtn.disabled = false;
+                    bar.hidden = true;
+                    status.textContent = msg;
+                    toast('Split failed');
+                },
+                done(tables, stats) {
+                    goBtn.disabled = false;
+                    previewBtn.disabled = false;
+                    bar.firstChild.style.width = '100%';
+                    renderSplitResult(results, tables, stats);
+                    status.textContent = 'Done.';
+                    toast(stats.preview ? 'Preview ready' : stats.matched.toLocaleString() + ' records written');
+                },
+            });
+        }
 
-        box.appendChild(el('div', { class: 'btn-row' }, [goBtn]));
+        previewBtn = el('button', {
+            class: 'btn ghost', type: 'button', onclick: () => run(true),
+            title: 'Reads only the start of the file and shows how each table will look. Writes nothing.',
+        }, 'Preview the first rows');
+        const goBtn = el('button', { class: 'btn', type: 'button', onclick: () => run(false) }, 'Split into tables');
+
+        box.appendChild(el('div', { class: 'btn-row' }, [previewBtn, goBtn]));
         box.appendChild(bar);
         box.appendChild(status);
         box.appendChild(results);
@@ -298,10 +345,42 @@
 
     let splitUrls = [];   // blob URLs of the previous run, revoked on replace
 
+    /** A compact preview table: header plus the first rows, cells clipped for
+        display only. The downloadable file is never clipped this way. */
+    function sampleTable(t, open) {
+        const wrap = el('details', { class: 'sample' });
+        if (open) wrap.open = true;
+        wrap.appendChild(el('summary', { text: t.filename + '  \u00b7  first ' + t.sample.length + ' row' + (t.sample.length === 1 ? '' : 's') }));
+        const scroll = el('div', { class: 'sample-wrap' });
+        const table = el('table', { class: 'sample-table' });
+        const clip = v => { const s = String(v === undefined ? '' : v); return s.length > 100 ? s.slice(0, 100) + '\u2026' : s; };
+        if (t.header) {
+            const tr = el('tr');
+            t.header.forEach(h => tr.appendChild(el('th', { text: clip(h) })));
+            table.appendChild(tr);
+        }
+        t.sample.forEach(rowCells => {
+            const tr = el('tr');
+            const n = t.header ? t.header.length : rowCells.length;
+            for (let i = 0; i < n; i++) tr.appendChild(el('td', { text: clip(rowCells[i]) }));
+            table.appendChild(tr);
+        });
+        scroll.appendChild(table);
+        wrap.appendChild(scroll);
+        return wrap;
+    }
+
     function renderSplitResult(host, tables, stats) {
         splitUrls.forEach(u => URL.revokeObjectURL(u));
         splitUrls = [];
         host.textContent = '';
+
+        if (stats.preview) {
+            host.appendChild(el('p', { class: 'sub-h', text: 'Preview: no files were written yet' }));
+            host.appendChild(el('p', { class: 'muted small', text: stats.previewPartial
+                ? 'Built from the first ' + fmtSize(stats.previewBytes) + ' of the file, so every count below covers only that slice. The full split reads everything.'
+                : 'The file is small enough that this preview covers all of it.' }));
+        }
 
         const s = el('div', { class: 'stats' });
         [[stats.rows.toLocaleString(), 'rows read'],
@@ -334,23 +413,46 @@
         if (stats.usersCapped) {
             host.appendChild(el('p', { class: 'muted small', text: 'The account counter stopped at 5,000 distinct accounts; treat that figure as "at least".' }));
         }
+        if (stats.template && stats.template !== 'all') {
+            const tl = (SPLIT.TEMPLATES[stats.template] || {}).label || stats.template;
+            host.appendChild(el('p', { class: 'muted small' }, rich(
+                'Template **' + tl + '**: records.csv carries ' + (stats.columns || 0) + ' columns, chosen from the ' +
+                (stats.availableCols || 0).toLocaleString() + ' JSON columns this file offers. A template hides nothing: **subset.csv** keeps the full record.')));
+        }
+        if (stats.templateMissing && stats.templateMissing.length) {
+            host.appendChild(el('p', { class: 'muted small', text:
+                'Template columns not present in this file: ' + stats.templateMissing.join(', ') + '. Purview only writes them for the workloads that use them.' }));
+        }
         if (!stats.matched) {
             host.appendChild(el('p', { class: 'lede' }, rich(
                 'Nothing matched those filters. Check the IP against **ip-summary.csv**, which lists every address in the file.')));
         }
 
-        host.appendChild(el('p', { class: 'sub-h', text: 'Your tables' }));
-        const list = el('div', { class: 'files' });
-        tables.forEach(t => {
-            const url = URL.createObjectURL(t.blob);
-            splitUrls.push(url);
-            const a = el('a', {
-                class: 'btn ghost tiny', href: url, download: t.filename,
-                title: t.label,
-            }, '⤓ ' + t.filename + '  (' + t.rows.toLocaleString() + ')');
-            list.appendChild(a);
-        });
-        host.appendChild(list);
+        if (!stats.preview) {
+            host.appendChild(el('p', { class: 'sub-h', text: 'Your tables' }));
+            const list = el('div', { class: 'files' });
+            tables.forEach(t => {
+                const url = URL.createObjectURL(t.blob);
+                splitUrls.push(url);
+                const a = el('a', {
+                    class: 'btn ghost tiny', href: url, download: t.filename,
+                    title: t.label,
+                }, '\u2913 ' + t.filename + '  (' + t.rows.toLocaleString() + ')');
+                list.appendChild(a);
+            });
+            host.appendChild(list);
+        }
+
+        const withSamples = tables.filter(t => t.sample && t.sample.length);
+        if (withSamples.length) {
+            host.appendChild(el('p', { class: 'sub-h', text: stats.preview ? 'How each file will look' : 'How each file looks inside' }));
+            withSamples.forEach(t => host.appendChild(sampleTable(t, stats.preview || t.id === 'records')));
+        }
+
+        if (stats.preview) {
+            host.appendChild(el('p', { class: 'muted small', text: 'Happy with the shape? Run "Split into tables" to write the files.' }));
+            return;
+        }
 
         const how = el('ul', { class: 'spot' });
         [

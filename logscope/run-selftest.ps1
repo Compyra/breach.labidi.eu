@@ -24,7 +24,7 @@ $argList = @(
     '--no-first-run'
     '--disable-extensions'
     "--user-data-dir=$profileDir"
-    '--virtual-time-budget=10000'
+    '--virtual-time-budget=20000'
     '--dump-dom'
     $Url
 )

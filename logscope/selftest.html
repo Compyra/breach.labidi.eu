@@ -48,7 +48,18 @@
     <script>
         window.__SCRIPT_ERRORS = [];
         window.addEventListener('error', function (e) {
-            window.__SCRIPT_ERRORS.push((e.filename || '?') + ': ' + e.message);
+            var msg = (e.filename || '?') + ': ' + e.message;
+            window.__SCRIPT_ERRORS.push(msg);
+            /* Surface it immediately: headless dumps cannot wait for the
+               suite's own render if the async chain has already died. */
+            var s = document.getElementById('summary');
+            if (s) s.textContent = 'SCRIPT ERROR: ' + msg;
+        });
+        window.addEventListener('unhandledrejection', function (e) {
+            var msg = 'unhandled rejection: ' + (e.reason && e.reason.message ? e.reason.message : e.reason);
+            window.__SCRIPT_ERRORS.push(msg);
+            var s = document.getElementById('summary');
+            if (s) s.textContent = 'SCRIPT ERROR: ' + msg;
         });
     </script>
     <script src="../core.js?v=1"></script>
@@ -310,10 +321,29 @@
                 ok('IP harvested from ClientIP', ips.indexOf('198.51.100.7') >= 0, ips.join(','));
                 ok('IP harvested from a nested object', ips.indexOf('10.20.30.40') >= 0, ips.join(','));
                 ok('IP harvested from free text in the JSON', ips.indexOf('203.0.113.44') >= 0, ips.join(','));
+
+                /* Name/value pair arrays become Family.Name columns. */
+                const dev = LS_SPLIT.flatten({
+                    DeviceProperties: [{ Name: 'OS', Value: 'Windows 11' }, { Name: 'BrowserType', Value: 'Edge 126' }],
+                    ExtendedProperties: [{ Name: 'UserAgent', Value: 'Mozilla/5.0' }],
+                    ModifiedProperties: [{ Name: 'Role', OldValue: 'User', NewValue: 'Admin' }],
+                }, '', {});
+                ok('flatten collapses name/value pairs into columns',
+                    dev['DeviceProperties.OS'] === 'Windows 11' && dev['ExtendedProperties.UserAgent'] === 'Mozilla/5.0',
+                    JSON.stringify(dev).slice(0, 120));
+                ok('flatten leaves old/new value arrays to their own table',
+                    dev['ModifiedProperties.Role'] === undefined);
+                ok('column templates are published', !!(LS_SPLIT.TEMPLATES && LS_SPLIT.TEMPLATES.device && LS_SPLIT.TEMPLATES.all));
             })();
 
 
             /* ---------------- end to end, asynchronous ---------------- */
+
+            /* Headless dumps advance virtual time freely while FileReader and
+               Blob promises are pending; a live timer pins the clock to small
+               steps so the dump cannot happen before the chain finishes.
+               Cleared in render(), which every terminal path calls. */
+            const KEEPALIVE = setInterval(function () { }, 25);
 
             const splitCsv = (function () {
                 const ad1 = JSON.stringify({
@@ -367,10 +397,14 @@
                     ok('split: IP summary covers parsed and unparsed rows',
                         t['ip-summary.csv'] && t['ip-summary.csv'].rows === 3,
                         t['ip-summary.csv'] && t['ip-summary.csv'].rows);
-                    ok('split: subset keeps the original schema (header + 4)',
-                        t['subset.csv'] && t['subset.csv'].rows === 5,
+                    ok('split: subset keeps the original schema (4 data rows)',
+                        t['subset.csv'] && t['subset.csv'].rows === 4,
                         t['subset.csv'] && t['subset.csv'].rows);
                     ok('split: empty tables are omitted', !t['modified-properties.csv']);
+                    ok('split: results carry a sample of each table',
+                        t['records.csv'].sample.length === 4 && t['records.csv'].header[0] === 'RowId' &&
+                        t['subset.csv'].sample.length === 4 && t['subset.csv'].header[0] === 'CreationDate',
+                        t['records.csv'].sample.length + '/' + (t['records.csv'].header || [])[0]);
 
                     /* The oversized record must survive subset.csv uncut and
                        come back through the analyser's own parser. */
@@ -394,12 +428,61 @@
                                     done: function (tables2, stats2) {
                                         ok('split: IP filter keeps only the matching record', stats2.matched === 1, stats2.matched);
                                         ok('split: IP summary still covers the whole file', stats2.ips === 3, stats2.ips);
-                                        /* By now DOMContentLoaded has fired and app.js has
-                                           booted, so parse AND runtime errors are visible. */
-                                        ok('every script parsed and booted without errors',
-                                            window.__SCRIPT_ERRORS.length === 0, window.__SCRIPT_ERRORS.join(' | '));
-                                        ok('the UI module exposed its API', !!(window.LOGSCOPE && window.LOGSCOPE.report));
-                                        render();
+
+                                        /* templates, table choice and preview on a device-rich fixture */
+                                        const devAd = JSON.stringify({
+                                            CreationTime: '2026-07-29T08:00:00', Id: 'd1', Operation: 'UserLoggedIn',
+                                            UserId: 'kim@contoso.com', Workload: 'AzureActiveDirectory',
+                                            ActorIpAddress: '203.0.113.5', Fluff: 'not in any template',
+                                            DeviceProperties: [{ Name: 'OS', Value: 'Windows 11' }, { Name: 'BrowserType', Value: 'Edge 126' }, { Name: 'DisplayName', Value: 'LAPTOP-X1' }],
+                                            ExtendedProperties: [{ Name: 'UserAgent', Value: 'Mozilla/5.0' }]
+                                        });
+                                        const devCsv = 'CreationDate,UserIds,Operations,AuditData\r\n' +
+                                            '2026-07-29T08:00:00Z,kim@contoso.com,UserLoggedIn,"' + devAd.replace(/"/g, '""') + '"\r\n' +
+                                            '2026-07-29T09:00:00Z,kim@contoso.com,UserLoggedIn,"{""CreationTime"":""2026-07-29T09:00:00"",""Id"":""d2"",""Operation"":""UserLoggedIn"",""UserId"":""kim@contoso.com"",""ClientIP"":""203.0.113.5""}"\r\n';
+                                        const devFile = new File([devCsv], 'dev.csv', { type: 'text/csv' });
+                                        const only = { records: true, parameters: false, modified: false, mail: false, affected: false, ipsummary: false, subset: false };
+
+                                        LS_SPLIT.splitUal(devFile, { template: 'device', tables: only }, {
+                                            progress: function () { },
+                                            error: function (m) { ok('split: template run works', false, m); render(); },
+                                            done: function (tD, sD) {
+                                                ok('split: only the ticked table is produced',
+                                                    tD.length === 1 && tD[0].filename === 'records.csv',
+                                                    tD.map(function (x) { return x.filename; }).join(','));
+                                                const hdr = tD[0].header;
+                                                ok('split: template turns device pairs into columns',
+                                                    hdr.indexOf('DeviceProperties.OS') >= 0 && hdr.indexOf('ExtendedProperties.UserAgent') >= 0,
+                                                    hdr.slice(10).join(','));
+                                                ok('split: template leaves unrelated columns out',
+                                                    hdr.indexOf('Fluff') < 0);
+                                                ok('split: template order starts after the base columns',
+                                                    hdr[10] === 'ActorIpAddress', hdr[10]);
+                                                ok('split: absent template columns are reported',
+                                                    sD.templateMissing.length > 0 && sD.templateMissing.indexOf('BrowserName') >= 0,
+                                                    sD.templateMissing.join(','));
+
+                                                LS_SPLIT.splitUal(devFile, { preview: true }, {
+                                                    progress: function () { },
+                                                    error: function (m) { ok('split: preview works', false, m); render(); },
+                                                    done: function (tP, sP) {
+                                                        ok('split: preview marks itself and writes no files',
+                                                            sP.preview === true && tP.every(function (x) { return x.blob === null; }));
+                                                        ok('split: preview still parses the rows', sP.matched === 2, sP.matched);
+                                                        const rp = tP.filter(function (x) { return x.filename === 'records.csv'; })[0];
+                                                        ok('split: preview carries sample rows',
+                                                            rp && rp.sample.length === 2 && rp.header[0] === 'RowId',
+                                                            rp && rp.sample.length);
+                                                        /* By now DOMContentLoaded has fired and app.js has
+                                                           booted, so parse AND runtime errors are visible. */
+                                                        ok('every script parsed and booted without errors',
+                                                            window.__SCRIPT_ERRORS.length === 0, window.__SCRIPT_ERRORS.join(' | '));
+                                                        ok('the UI module exposed its API', !!(window.LOGSCOPE && window.LOGSCOPE.report));
+                                                        render();
+                                                    },
+                                                });
+                                            },
+                                        });
                                     },
                                 });
                             },
@@ -411,6 +494,7 @@
             /* ---------------- render ---------------- */
 
             function render() {
+                clearInterval(KEEPALIVE);
                 const list = document.getElementById('results');
                 list.textContent = '';
             let pass = 0;
