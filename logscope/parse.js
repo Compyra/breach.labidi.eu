@@ -146,8 +146,12 @@
         const has = n => h.indexOf(n) >= 0;
         if (has('auditdata') || (has('operations') && has('userids'))) return 'ual';
         if (has('senderaddress') || has('recipientaddress') || has('messagetraceid')) return 'trace';
+        /* The Authentication Details tab export: per-step method and result,
+           no user or IP columns at all. */
+        if (has('authenticationmethod') && has('resultdetail')) return 'signin-auth';
         if (has('activity') && has('actor')) return 'audit';
-        if (has('username') || has('ipaddress') || has('application')) {
+        if (has('username') || has('ipaddress') || has('application') ||
+            has('serviceprincipalname') || has('managedidentityname')) {
             /* Both exports have "Date (UTC)". The sign-in one always carries a
                user or application column; the audit one carries Activity. */
             if (has('activity')) return 'audit';
@@ -155,6 +159,16 @@
         }
         if (has('signinerrorcode') || has('conditionalaccess')) return 'signin';
         return 'unknown';
+    }
+
+    /** Portal CSV writes Location as "City, State, CC". Counting the whole
+        string made two cities in one country look like two countries, which
+        also poisoned the fast-travel pairing. The country is the last part. */
+    function countryOf(loc) {
+        const s = str(loc).trim();
+        if (!s) return '';
+        const parts = s.split(',').map(x => x.trim()).filter(Boolean);
+        return parts.length ? parts[parts.length - 1] : s;
     }
 
     /* ----------------------------------------------------------- normalisers */
@@ -218,13 +232,13 @@
             tsRaw: str(pick(o, ['Date (UTC)', 'Date'])),
             src: 'signin',
             kind: 'csv',
-            actor: str(pick(o, ['Username', 'User principal name', 'User', 'UserId'])),
+            actor: str(pick(o, ['Username', 'User principal name', 'User', 'UserId', 'Service principal name', 'Managed identity name'])),
             actorIp: str(pick(o, ['IP address', 'IP address (seen by resource)', 'IP'])),
             action: str(pick(o, ['Application', 'App'])) || 'sign-in',
             target: str(pick(o, ['Resource'])),
             app: str(pick(o, ['Application', 'App'])),
             result: (!errCode || errCode === '0') && /success/i.test(status || 'Success') ? 'success' : ('failure ' + errCode),
-            country: str(pick(o, ['Location'])),
+            country: countryOf(pick(o, ['Location'])),
             proto: str(pick(o, ['Authentication Protocol', 'Original transfer method'])),
             ua: str(pick(o, ['User agent'])),
             mfa: mfa,
@@ -239,6 +253,39 @@
                 transfer: str(pick(o, ['Original transfer method'])),
                 joinType: str(pick(o, ['Join Type'])),
                 compliantRaw: str(pick(o, ['Compliant'])),
+                location: str(pick(o, ['Location'])),
+            },
+            raw: o,
+        };
+    }
+
+    /** The "Authentication Details" tab export: one row per authentication
+        step, joined to the sign-in by Request ID. No user or IP columns. */
+    function normAuthDetailsCsv(o) {
+        const ok = /^true$/i.test(str(pick(o, ['Succeeded'])));
+        const method = str(pick(o, ['Authentication method']));
+        const methodDetail = str(pick(o, ['Authentication method detail']));
+        const detail = str(pick(o, ['Result detail']));
+        return {
+            ts: toDate(pick(o, ['Date (UTC)', 'Date'])),
+            tsRaw: str(pick(o, ['Date (UTC)', 'Date'])),
+            src: 'signin',
+            kind: 'auth step',
+            actor: '',
+            actorIp: '',
+            action: method + (methodDetail ? ' (' + methodDetail + ')' : ''),
+            target: '',
+            app: '',
+            result: (ok ? 'success' : 'failure') + (detail ? ': ' + detail : ''),
+            country: '',
+            proto: '',
+            ua: '',
+            mfa: /previously satisfied|claim in the token/i.test(method + ' ' + detail) ? 'prior' : '',
+            ca: '', risk: '', device: '',
+            extra: {
+                requestId: str(pick(o, ['Request ID'])),
+                detail: detail,
+                requirement: str(pick(o, ['Requirement'])),
             },
             raw: o,
         };
@@ -420,11 +467,14 @@
         if (rows.length < 2) return { kind: 'unknown', events: [], count: 0, note: 'Could not read this as JSON or CSV.' };
         const objs = rowsToObjects(rows);
         const kind = detectFromHeaders(rows[0]);
+        /* Keep the original rows so the page can show the file as-is. */
+        const table = { header: rows[0], rows: rows.slice(1, 5001), total: rows.length - 1 };
 
-        if (kind === 'ual') return done('ual', objs.map(normUal), filename);
-        if (kind === 'audit') return done('audit', objs.map(normAuditCsv), filename);
-        if (kind === 'signin') return done('signin', objs.map(normSigninCsv), filename);
-        if (kind === 'trace') return done('trace', objs.map(normTrace), filename);
+        if (kind === 'ual') return done('ual', objs.map(normUal), filename, table);
+        if (kind === 'audit') return done('audit', objs.map(normAuditCsv), filename, table);
+        if (kind === 'signin') return done('signin', objs.map(normSigninCsv), filename, table);
+        if (kind === 'signin-auth') return done('signin-auth', objs.map(normAuthDetailsCsv), filename, table);
+        if (kind === 'trace') return done('trace', objs.map(normTrace), filename, table);
 
         return done('unknown', objs.map(o => ({
             ts: toDate(Object.values(o)[0]), tsRaw: str(Object.values(o)[0]),
@@ -432,21 +482,23 @@
             action: '(unrecognised format)', target: '', app: '', result: '',
             country: '', proto: '', ua: '', mfa: '', ca: '', risk: '', device: '',
             extra: {}, raw: o,
-        })), filename);
+        })), filename, table);
     }
 
-    function done(kind, events, filename) {
+    function done(kind, events, filename, table) {
         events.forEach(e => { e.file = filename || ''; });
         return {
             kind: kind,
             events: events.filter(e => e),
             count: events.length,
             note: '',
+            table: table || null,
         };
     }
 
     const KIND_LABEL = {
         signin: 'Entra sign-in logs',
+        'signin-auth': 'Entra sign-in authentication details',
         audit: 'Entra audit logs',
         ual: 'Purview / Unified Audit Log',
         trace: 'Exchange message trace',

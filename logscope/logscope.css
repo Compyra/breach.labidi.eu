@@ -779,6 +779,35 @@ td .sub {
     margin-right: .5rem;
 }
 
+/* per-file remove and clickable pivot entries */
+.file-chip .chip-x {
+    margin-left: .45rem;
+    padding: 0 .35rem;
+    font: inherit;
+    line-height: 1;
+    color: var(--ink-3);
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.file-chip .chip-x:hover {
+    color: var(--bad, #ff6b6b);
+    border-color: currentColor;
+}
+
+.bars li.pick,
+td.pick {
+    cursor: pointer;
+}
+
+.bars li.pick:hover .bar-label,
+td.pick:hover span {
+    color: var(--accent);
+    text-decoration: underline;
+}
+
 .col-pick {
     display: inline-flex;
     align-items: center;

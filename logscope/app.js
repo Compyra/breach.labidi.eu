@@ -26,12 +26,14 @@
     const MAX_BYTES = 80 * 1024 * 1024;
     const MAX_ROWS = 600;
 
-    let FILES = []; // { name, kind, count }
+    let FILES = []; // { name, kind, count, table }
     let EVENTS = []; // normalised, all files merged
     let FINDINGS = [];
     let view = 'findings';
     let filterText = '';
     let filterSrc = 'all';
+    let hideEmpty = false;          // timeline: drop rows with no time or no content
+    let distinctBy = '';            // timeline: group by one field instead of listing
     let pendingBig = null;          // file waiting for the table splitter
 
     const out = () => $('#out');
@@ -47,11 +49,11 @@
             return;
         }
         if (!res.events.length) {
-            FILES.push({ name: name, kind: res.kind, count: 0, note: res.note || 'No rows found.' });
+            FILES.push({ name: name, kind: res.kind, count: 0, note: res.note || 'No rows found.', table: res.table || null });
             render();
             return;
         }
-        FILES.push({ name: name, kind: res.kind, count: res.events.length });
+        FILES.push({ name: name, kind: res.kind, count: res.events.length, table: res.table || null });
         EVENTS = EVENTS.concat(res.events);
         EVENTS.sort((a, b) => (a.ts ? a.ts.getTime(): 0) - (b.ts ? b.ts.getTime(): 0));
         recompute();
@@ -93,6 +95,15 @@
         toast('Cleared');
     }
 
+    /** Remove one file's events without touching the rest. */
+    function removeFile(name) {
+        FILES = FILES.filter(f => f.name !== name);
+        EVENTS = EVENTS.filter(e => e.file !== name);
+        recompute();
+        render();
+        toast('Removed ' + name);
+    }
+
     /* --------------------------------------------------------------- helpers */
 
     const fmt = d => {
@@ -122,11 +133,25 @@
         const q = filterText.trim().toLowerCase();
         return EVENTS.filter(e => {
             if (filterSrc !== 'all' && e.src !== filterSrc) return false;
+            if (hideEmpty && (!e.ts || (!e.actor && (!e.action || e.action.indexOf('(unrecognised') === 0)))) return false;
             if (!q) return true;
             return [e.actor, e.action, e.actorIp, e.target, e.app, e.country, e.result, e.proto, e.ua]
                 .join(' ').toLowerCase().indexOf(q) >= 0;
         });
     }
+
+    /* Fields the distinct view can group by. The accessor returns the value
+       one row contributes; blanks group under (empty). */
+    const DISTINCT_FIELDS = [
+        ['result', 'Result', e => e.result],
+        ['mfa', 'MFA', e => e.mfa],
+        ['actor', 'Who', e => e.actor],
+        ['action', 'What', e => e.action],
+        ['ip', 'IP address', e => e.actorIp],
+        ['country', 'Country', e => e.country],
+        ['usertype', 'User type', e => e.extra && e.extra.userType],
+        ['reason', 'Failure reason or detail', e => e.extra && (e.extra.failureReason || e.extra.resultReason || e.extra.detail)],
+    ];
 
     /* ----------------------------------------------------------------- views */
 
@@ -831,6 +856,54 @@
         return wrap;
     }
 
+    /** The distinct view: unique values of one field, with counts and the
+        who/what seen alongside each value, joined and capped for reading. */
+    function distinctTable(list, fieldKey) {
+        const field = DISTINCT_FIELDS.filter(f => f[0] === fieldKey)[0];
+        const wrap = el('div', { class: 'table-wrap' });
+        if (!field) return wrap;
+        const groups = new Map();
+        list.forEach(e => {
+            const v = String(field[2](e) || '(empty)');
+            let g = groups.get(v);
+            if (!g) { g = { n: 0, who: new Set(), what: new Set(), first: null, last: null }; groups.set(v, g); }
+            g.n++;
+            if (e.actor && g.who.size < 6) g.who.add(e.actor);
+            if (e.action && g.what.size < 8) g.what.add(e.action);
+            if (e.ts) {
+                if (!g.first || e.ts < g.first) g.first = e.ts;
+                if (!g.last || e.ts > g.last) g.last = e.ts;
+            }
+        });
+        const t = el('table');
+        const hr = el('tr');
+        [field[1] + ' (distinct)', 'Events', 'First seen', 'Last seen', 'Who', 'What'].forEach(h => hr.appendChild(el('th', { text: h })));
+        const thead = el('thead');
+        thead.appendChild(hr);
+        t.appendChild(thead);
+        const tb = el('tbody');
+        Array.from(groups.entries()).sort((a, b) => b[1].n - a[1].n).forEach(([v, g]) => {
+            const tr = el('tr');
+            const vd = el('td', { class: 'pick', title: 'click to filter the timeline on this value' });
+            vd.appendChild(el('span', { text: v }));
+            vd.addEventListener('click', () => {
+                filterText = v === '(empty)' ? '' : v;
+                distinctBy = '';
+                render();
+            });
+            tr.appendChild(vd);
+            tr.appendChild(el('td', { class: 'mono', text: String(g.n) }));
+            tr.appendChild(el('td', { class: 'mono nowrap', text: fmt(g.first) }));
+            tr.appendChild(el('td', { class: 'mono nowrap', text: fmt(g.last) }));
+            tr.appendChild(el('td', { text: Array.from(g.who).join('; ') || 'n/a' }));
+            tr.appendChild(el('td', { text: Array.from(g.what).join('; ') || 'n/a' }));
+            tb.appendChild(tr);
+        });
+        t.appendChild(tb);
+        wrap.appendChild(t);
+        return wrap;
+    }
+
     function viewTimeline() {
         const frag = document.createDocumentFragment();
         const list = filtered();
@@ -847,6 +920,22 @@
         [['all', 'All sources'], ['signin', 'Sign-ins'], ['audit', 'Audit'], ['ual', 'Purview'], ['trace', 'Message trace'], ['unknown', 'Unrecognised']]
             .forEach(([v, l]) => sel.appendChild(el('option', { value: v, selected: filterSrc === v || null, text: l })));
         bar.appendChild(sel);
+        const dsel = el('select', {
+            title: 'Show every unique value of one field instead of the row list',
+            onchange: function () { distinctBy = this.value; render(); },
+        });
+        dsel.appendChild(el('option', { value: '', selected: distinctBy === '' || null, text: 'All rows' }));
+        DISTINCT_FIELDS.forEach(([k, label]) => {
+            dsel.appendChild(el('option', { value: k, selected: distinctBy === k || null, text: 'Distinct: ' + label }));
+        });
+        bar.appendChild(dsel);
+        const hideLab = el('label', { class: 'split-check', title: 'drop rows that carry no time, or neither an actor nor a recognisable action' });
+        const hideCb = el('input', { type: 'checkbox' });
+        hideCb.checked = hideEmpty;
+        hideCb.addEventListener('change', () => { hideEmpty = hideCb.checked; render(); });
+        hideLab.appendChild(hideCb);
+        hideLab.appendChild(el('span', { text: 'Hide empty rows' }));
+        bar.appendChild(hideLab);
         bar.appendChild(el('span', { class: 'muted small', text: list.length + ' of ' + EVENTS.length + ' events' }));
         frag.appendChild(bar);
 
@@ -856,9 +945,14 @@
         function renderInto() {
             const l = filtered();
             holder.textContent = '';
-            holder.appendChild(eventTable(l.slice(0, MAX_ROWS)));
-            if (l.length > MAX_ROWS) {
-                holder.appendChild(el('p', { class: 'muted small', text: 'Showing the first ' + MAX_ROWS + ' of ' + l.length + '. Narrow the filter to see more.' }));
+            if (distinctBy) {
+                holder.appendChild(distinctTable(l, distinctBy));
+                holder.appendChild(el('p', { class: 'muted small', text: 'Every unique value once, with the accounts and actions seen alongside it. Click a value to filter the timeline on it.' }));
+            } else {
+                holder.appendChild(eventTable(l.slice(0, MAX_ROWS)));
+                if (l.length > MAX_ROWS) {
+                    holder.appendChild(el('p', { class: 'muted small', text: 'Showing the first ' + MAX_ROWS + ' of ' + l.length + '. Narrow the filter to see more.' }));
+                }
             }
             const c = bar.querySelector('.muted');
             if (c) c.textContent = l.length + ' of ' + EVENTS.length + ' events';
@@ -868,7 +962,7 @@
         return frag;
     }
 
-    function topList(title, map, note) {
+    function topList(title, map, note, onPick) {
         const box = el('div', { class: 'pivot' });
         box.appendChild(el('h3', { text: title }));
         if (note) box.appendChild(el('p', { class: 'muted small', text: note }));
@@ -878,6 +972,11 @@
         const max = rows[0][1];
         rows.forEach(([k, n]) => {
             const li = el('li');
+            if (onPick) {
+                li.classList.add('pick');
+                li.title = 'click to filter the timeline on "' + k + '"';
+                li.addEventListener('click', () => onPick(k));
+            }
             li.appendChild(el('span', { class: 'bar-label', text: k }));
             const track = el('span', { class: 'bar-track' });
             track.appendChild(el('i', { style: 'width:' + Math.max(3, Math.round(n / max * 100)) + '%' }));
@@ -896,15 +995,56 @@
             EVENTS.forEach(e => { const k = keyFn(e); if (k) m.set(k, (m.get(k) || 0) + 1); });
             return m;
         };
+        /* Clicking a pivot entry turns it into the timeline filter. */
+        const pick = v => { filterText = v; distinctBy = ''; view = 'timeline'; render(); };
 
+        frag.appendChild(el('p', { class: 'muted small', text: 'Click any entry to filter the timeline on it.' }));
         const grid = el('div', { class: 'pivot-grid' });
-        grid.appendChild(topList('Source addresses', tally(e => e.actorIp), 'The one that does not belong is usually visible here first.'));
-        grid.appendChild(topList('Accounts', tally(e => e.actor)));
-        grid.appendChild(topList('Operations and applications', tally(e => e.action)));
-        grid.appendChild(topList('Countries', tally(e => e.country)));
-        grid.appendChild(topList('Client and user agent', tally(e => (e.ua || '').slice(0, 60))));
-        grid.appendChild(topList('Authentication protocols', tally(e => e.proto)));
+        grid.appendChild(topList('Source addresses', tally(e => e.actorIp), 'The one that does not belong is usually visible here first.', pick));
+        grid.appendChild(topList('Accounts', tally(e => e.actor), '', pick));
+        grid.appendChild(topList('Operations and applications', tally(e => e.action), '', pick));
+        grid.appendChild(topList('Countries', tally(e => e.country), 'The country code from the location; two cities in one country count once.', pick));
+        grid.appendChild(topList('Client and user agent', tally(e => (e.ua || '').slice(0, 60)), '', pick));
+        grid.appendChild(topList('Authentication protocols', tally(e => e.proto), '', pick));
         frag.appendChild(grid);
+        return frag;
+    }
+
+    /** The loaded files exactly as they came in, first rows as a table. */
+    function viewRows() {
+        const frag = document.createDocumentFragment();
+        if (!FILES.length) {
+            frag.appendChild(el('p', { class: 'lede', text: 'No files loaded.' }));
+            return frag;
+        }
+        frag.appendChild(el('p', { class: 'muted small', text: 'The original columns and rows of each loaded file, untouched. The timeline and findings work on the normalised view; this is the source of truth beneath them.' }));
+        FILES.forEach((f, i) => {
+            const box = el('details', { class: 'sample' });
+            if (i === 0) box.open = true;
+            const cap = f.table ? Math.min(f.table.rows.length, MAX_ROWS) : 0;
+            box.appendChild(el('summary', { text: f.name + '  \u00b7  ' + (f.table ? f.table.total.toLocaleString() + ' rows' : 'not tabular') }));
+            if (!f.table) {
+                box.appendChild(el('p', { class: 'muted small', text: 'This file was JSON, so there is no original row grid. The timeline shows its normalised events; the raw object of each event is in the report evidence.' }));
+            } else {
+                const scroll = el('div', { class: 'sample-wrap' });
+                const t = el('table', { class: 'sample-table' });
+                const clip = v => { const s = String(v === undefined ? '' : v); return s.length > 100 ? s.slice(0, 100) + '\u2026' : s; };
+                const hr = el('tr');
+                f.table.header.forEach(h => hr.appendChild(el('th', { text: clip(h) })));
+                t.appendChild(hr);
+                f.table.rows.slice(0, cap).forEach(row => {
+                    const tr = el('tr');
+                    for (let ci = 0; ci < f.table.header.length; ci++) tr.appendChild(el('td', { text: clip(row[ci]) }));
+                    t.appendChild(tr);
+                });
+                scroll.appendChild(t);
+                box.appendChild(scroll);
+                if (f.table.total > cap) {
+                    box.appendChild(el('p', { class: 'muted small', text: 'Showing the first ' + cap + ' of ' + f.table.total.toLocaleString() + ' rows' + (f.table.total > f.table.rows.length ? ' (the first ' + f.table.rows.length.toLocaleString() + ' are kept in memory)' : '') + '. The full file is untouched on your disk.' }));
+                }
+            }
+            frag.appendChild(box);
+        });
         return frag;
     }
 
@@ -1005,6 +1145,11 @@
             const chip = el('span', { class: 'file-chip' + (f.count ? '' : ' bad') });
             chip.appendChild(el('b', { text: f.name }));
             chip.appendChild(el('span', { text: ' · ' + (PARSE.KIND_LABEL[f.kind] || f.kind) + ' · ' + f.count }));
+            chip.appendChild(el('button', {
+                class: 'chip-x', type: 'button', title: 'remove this file and its events',
+                'aria-label': 'remove ' + f.name,
+                onclick: () => removeFile(f.name),
+            }, '×'));
             files.appendChild(chip);
         });
         files.appendChild(el('button', { class: 'btn ghost tiny', type: 'button', onclick: clearAll }, 'Clear all'));
@@ -1030,7 +1175,7 @@
 
         const tabs = el('div', { class: 'tabs', role: 'tablist' });
         [['findings', 'Findings', FINDINGS.length], ['timeline', 'Timeline', EVENTS.length],
-        ['pivots', 'Pivots', ''], ['coverage', 'Gaps', '']]
+        ['pivots', 'Pivots', ''], ['rows', 'Original rows', ''], ['coverage', 'Gaps', '']]
             .forEach(([id, label, n]) => {
                 tabs.appendChild(el('button', {
                     type: 'button', role: 'tab',
@@ -1056,6 +1201,7 @@
         if (view === 'findings') body.appendChild(viewFindings());
         else if (view === 'timeline') body.appendChild(viewTimeline());
         else if (view === 'pivots') body.appendChild(viewPivots());
+        else if (view === 'rows') body.appendChild(viewRows());
         else body.appendChild(viewCoverage());
         root.appendChild(body);
 

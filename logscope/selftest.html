@@ -182,6 +182,36 @@
             })());
             ok('empty handled', LS_PARSE.parseText('', 'e.txt').kind === 'empty');
 
+            /* The Authentication Details tab export: method and result per
+               step, no user or IP columns. Schema from a real export. */
+            const rAuth = LS_PARSE.parseText(
+                'Request ID,Date,Authentication method,Authentication method detail,Succeeded,Result detail,Requirement\n' +
+                'dda13589-d867-4e9a-901e-50c262c25c00,2026-07-28T11:42:50Z,Password,Password Hash Sync,true,Correct password,\n' +
+                '0b66bae6-aba4-41f3-8741-9064efb95500,2026-07-17T14:55:17Z,Previously satisfied,,true,First factor requirement satisfied by claim in the token,00000000-0000-0000-0000-000000000002\n' +
+                'aa11aa11-0000-0000-0000-000000000000,2026-07-16T08:00:00Z,Password,Password Hash Sync,false,Invalid username or password or Invalid on-premise username or password.,\n',
+                'InteractiveSignIns_AuthDetails_x.csv');
+            ok('auth-details export detected', rAuth.kind === 'signin-auth' && rAuth.events.length === 3,
+                rAuth.kind + '/' + rAuth.events.length);
+            ok('auth step carries method, result detail and the claim marker',
+                rAuth.events[1].mfa === 'prior' && rAuth.events[2].result.indexOf('failure') === 0 &&
+                rAuth.events[0].extra.requestId === 'dda13589-d867-4e9a-901e-50c262c25c00',
+                rAuth.events[1].mfa + '/' + rAuth.events[2].result);
+
+            /* Two cities in one country are one country, not two. */
+            const rLoc = LS_PARSE.parseText(
+                'Date (UTC),Username,IP address,Application,Location,Status\n' +
+                '2026-07-28T11:00:00Z,kim@x.be,81.164.55.10,Office,"Merelbeke, Oost-Vlaanderen, BE",Success\n' +
+                '2026-07-28T12:00:00Z,kim@x.be,81.164.55.11,Office,"Gent, Oost-Vlaanderen, BE",Success\n',
+                'signins.csv');
+            ok('country is the country, not the city',
+                rLoc.events[0].country === 'BE' && rLoc.events[1].country === 'BE' &&
+                rLoc.events[0].extra.location === 'Merelbeke, Oost-Vlaanderen, BE',
+                rLoc.events[0].country + '/' + rLoc.events[0].extra.location);
+            ok('the original rows survive for the rows view',
+                rLoc.table && rLoc.table.total === 2 && rLoc.table.header[4] === 'Location' &&
+                rLoc.table.rows[0][4] === 'Merelbeke, Oost-Vlaanderen, BE',
+                rLoc.table && JSON.stringify(rLoc.table.header));
+
             /* Zoneless UAL timestamps are UTC; parsing them as local time
                misaligns them against zoned Entra rows. */
             const rTz = LS_PARSE.parseText(
