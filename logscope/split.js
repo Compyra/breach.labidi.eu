@@ -241,6 +241,100 @@
         return isIpv6(s);
     }
 
+    /* --------------------------------------------------------- IP scoping */
+
+    /** Addresses that can only be internal: RFC1918, loopback, link-local,
+        CGNAT, unique-local and link-local IPv6. */
+    function isPrivateIp(ip) {
+        if (ip.indexOf(':') >= 0) {
+            return ip === '::1' || /^f[cd]/.test(ip) || ip.indexOf('fe80:') === 0;
+        }
+        const o = ip.split('.').map(Number);
+        return o[0] === 10 || o[0] === 127 ||
+            (o[0] === 172 && o[1] >= 16 && o[1] <= 31) ||
+            (o[0] === 192 && o[1] === 168) ||
+            (o[0] === 169 && o[1] === 254) ||
+            (o[0] === 100 && o[1] >= 64 && o[1] <= 127);
+    }
+
+    function ip4ToInt(ip) {
+        const o = ip.split('.');
+        return (((+o[0]) * 16777216) + ((+o[1]) * 65536) + ((+o[2]) * 256) + (+o[3])) >>> 0;
+    }
+
+    function ip6ToBig(ip) {
+        const dbl = ip.indexOf('::');
+        let head = [], tail = [];
+        if (dbl >= 0) {
+            head = ip.slice(0, dbl).split(':').filter(Boolean);
+            tail = ip.slice(dbl + 2).split(':').filter(Boolean);
+        } else {
+            head = ip.split(':');
+        }
+        const groups = head.concat(new Array(8 - head.length - tail.length).fill('0'), tail);
+        let n = 0n;
+        for (let i = 0; i < 8; i++) n = (n << 16n) + BigInt(parseInt(groups[i] || '0', 16) || 0);
+        return n;
+    }
+
+    /**
+     * Pull every CIDR out of any text: the official ServiceTags JSON, a CSV,
+     * or a pasted list. Every range in such a file is a Microsoft range, so
+     * the union is the right answer.
+     */
+    function parseCidrList(text) {
+        const v4 = [], v6 = [];
+        const re4 = /\b(\d{1,3}(?:\.\d{1,3}){3})\/(\d{1,2})\b/g;
+        let m;
+        while ((m = re4.exec(text)) !== null) {
+            const bits = +m[2];
+            if (bits > 32 || !validIp(m[1])) continue;
+            const size = bits === 32 ? 1 : Math.pow(2, 32 - bits);
+            const start = bits === 0 ? 0 : (ip4ToInt(m[1]) - (ip4ToInt(m[1]) % size)) >>> 0;
+            v4.push([start, (start + size - 1) >>> 0]);
+        }
+        const re6 = /([0-9a-fA-F:]{2,45}::?[0-9a-fA-F:]*)\/(\d{1,3})/g;
+        while ((m = re6.exec(text)) !== null) {
+            const ip = m[1].toLowerCase();
+            const bits = +m[2];
+            if (bits > 128 || !isIpv6(ip)) continue;
+            const shift = BigInt(128 - bits);
+            const start = (ip6ToBig(ip) >> shift) << shift;
+            v6.push([start, start + ((1n << shift) - 1n)]);
+        }
+        v4.sort((a, b) => a[0] - b[0]);
+        v6.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+        return { v4: v4, v6: v6, count: v4.length + v6.length };
+    }
+
+    /** Classifier: private, microsoft (inside the loaded ranges), or public. */
+    function makeScope(ranges) {
+        function inRanges(ip) {
+            if (!ranges || !ranges.count) return false;
+            if (ip.indexOf(':') < 0) {
+                const n = ip4ToInt(ip);
+                let lo = 0, hi = ranges.v4.length - 1;
+                while (lo <= hi) {
+                    const mid = (lo + hi) >> 1, r = ranges.v4[mid];
+                    if (n < r[0]) hi = mid - 1; else if (n > r[1]) lo = mid + 1; else return true;
+                }
+                return false;
+            }
+            let b;
+            try { b = ip6ToBig(ip); } catch (e) { return false; }
+            let lo = 0, hi = ranges.v6.length - 1;
+            while (lo <= hi) {
+                const mid = (lo + hi) >> 1, r = ranges.v6[mid];
+                if (b < r[0]) hi = mid - 1; else if (b > r[1]) lo = mid + 1; else return true;
+            }
+            return false;
+        }
+        return function (ip) {
+            if (isPrivateIp(ip)) return 'private';
+            return inRanges(ip) ? 'microsoft' : 'public';
+        };
+    }
+
     /** Every IP anywhere in the record, so a filter cannot miss a nested one. */
     function harvestIps(flat, rawJson) {
         const found = new Set();
@@ -416,7 +510,7 @@
         return o;
     }
 
-    function matches(filters, ips, user, op, created, hay) {
+    function matches(filters, ips, user, op, created, hay, scopeFn) {
         if (filters.ip) {
             const want = filters.ip.trim().toLowerCase();
             if (want) {
@@ -427,6 +521,20 @@
                     ? ips.indexOf(want) >= 0
                     : ips.some(x => x.indexOf(want) === 0);
                 if (!hit) return false;
+            }
+        }
+        if (filters.scope && filters.scope !== 'any' && scopeFn) {
+            const scopes = ips.map(scopeFn);
+            /* excludeMs keeps rows with no IPs at all: nothing Microsoft is
+               mentioned there. The keep-only options need a matching IP. */
+            if (filters.scope === 'excludeMs') {
+                if (scopes.indexOf('microsoft') >= 0) return false;
+            } else if (filters.scope === 'private') {
+                if (scopes.indexOf('private') < 0) return false;
+            } else if (filters.scope === 'public') {
+                if (scopes.indexOf('public') < 0 && scopes.indexOf('microsoft') < 0) return false;
+            } else if (filters.scope === 'publicNotMs') {
+                if (scopes.indexOf('public') < 0) return false;
             }
         }
         if (filters.user) {
@@ -503,6 +611,9 @@
         const flatSkip = filters.flatSkip || {};
         const wlStat = new Map();      // workload -> { rows, filledOrig, filledFlat, hasMail }
         const wlKey = ad => String((ad && ad.Workload) || 'other');
+        /* Classifies every address as private, microsoft or public; without a
+           loaded ranges file nothing is ever 'microsoft'. */
+        const scopeFn = makeScope(filters.msRanges || null);
         const stats = {
             rows: 0, parsed: 0, unparsed: 0, matched: 0,
             first: '', last: '', ips: 0, users: new Set(), ops: new Map(),
@@ -646,7 +757,14 @@
             });
             streamFile(file,
                 t => src.push(t),
-                () => { if (!partial) src.end(); stats.ips = ipStat.size; passTwo(); },
+                () => {
+                    if (!partial) src.end();
+                    stats.ips = ipStat.size;
+                    stats.msRanges = (filters.msRanges && filters.msRanges.count) || 0;
+                    stats.scopeCounts = { private: 0, microsoft: 0, public: 0 };
+                    ipStat.forEach((v, ip) => { stats.scopeCounts[scopeFn(ip)]++; });
+                    passTwo();
+                },
                 e => cb.error('Could not read the file: ' + (e && e.message ? e.message : e)),
                 (a, b) => cb.progress('Reading and indexing', a, b, 0),
                 limit);
@@ -667,7 +785,7 @@
 
             const ITEM_COLS = ['Folder.Path', 'Item.Index', 'Item.InternetMessageId', 'Item.SizeInBytes', 'Item.Subject'];
             const subset = makeSink('original-rows.csv', null, true);
-            const ipsum = makeSink('ip-summary.csv', ['IP', 'Records', 'FirstSeen', 'LastSeen', 'DistinctUsers', 'Users', 'Operations']);
+            const ipsum = makeSink('ip-summary.csv', ['IP', 'Scope', 'Records', 'FirstSeen', 'LastSeen', 'DistinctUsers', 'Users', 'Operations']);
             if (wants('subset')) subset.write(header);
 
             /* One sink per workload when splitting by rows, one for the lot
@@ -726,7 +844,7 @@
                 const fl = ad ? flatten(ad, '', Object.create(null)) : {};
                 const ips = ad ? harvestIps(fl, adRaw) : harvestIps({}, row.join(' '));
                 const hay = filters.text ? row.join('\u0000').toLowerCase() : '';
-                if (!matches(filters, ips, user, op, created, hay)) return;
+                if (!matches(filters, ips, user, op, created, hay, scopeFn)) return;
                 stats.matched++;
 
                 if (wants('subset')) subset.write(row);
@@ -766,7 +884,7 @@
                         Array.from(ipStat.entries())
                             .sort((a, b) => b[1].n - a[1].n)
                             .forEach(([ip, s]) => ipsum.write([
-                                ip, s.n, s.first, s.last, s.users.size,
+                                ip, scopeFn(ip), s.n, s.first, s.last, s.users.size,
                                 Array.from(s.users).join('; '),
                                 Array.from(s.ops).join('; '),
                             ]));
@@ -852,7 +970,7 @@
             const mail = makeSink('mail-items.csv', ['RowId', 'RecordId', 'CreationDate', 'UserId', 'Operation', 'FolderPath', 'InternetMessageId', 'SizeInBytes', 'Subject']);
             const affected = makeSink('affected-items.csv', ['RowId', 'RecordId', 'CreationDate', 'UserId', 'Operation', 'Name', 'Value']);
             const subset = makeSink('original-rows.csv', null, true);
-            const ipsum = makeSink('ip-summary.csv', ['IP', 'Records', 'FirstSeen', 'LastSeen', 'DistinctUsers', 'Users', 'Operations']);
+            const ipsum = makeSink('ip-summary.csv', ['IP', 'Scope', 'Records', 'FirstSeen', 'LastSeen', 'DistinctUsers', 'Users', 'Operations']);
 
             /* One sink per discovered JSON array table, most frequent first.
                A checkbox unticks one by name; new discoveries default to on.
@@ -897,7 +1015,7 @@
                 const flat = ad ? flatten(ad, '', Object.create(null)) : {};
                 const ips = ad ? harvestIps(flat, adRaw) : harvestIps({}, row.join(' '));
                 const hay = filters.text ? row.join('\u0000').toLowerCase() : '';
-                if (!matches(filters, ips, user, op, created, hay)) return;
+                if (!matches(filters, ips, user, op, created, hay, scopeFn)) return;
                 stats.matched++;
 
                 if (wants('subset')) subset.write(row);
@@ -983,7 +1101,7 @@
                         Array.from(ipStat.entries())
                             .sort((a, b) => b[1].n - a[1].n)
                             .forEach(([ip, s]) => ipsum.write([
-                                ip, s.n, s.first, s.last, s.users.size,
+                                ip, scopeFn(ip), s.n, s.first, s.last, s.users.size,
                                 Array.from(s.users).join('; '),
                                 Array.from(s.ops).join('; '),
                             ]));
@@ -991,15 +1109,15 @@
 
                     const fixed = [
                         { id: 'records', label: 'Records, one row per audit event with the JSON flattened into columns', sink: records, unpackedFrom: keepBase.length },
-                        { id: 'parameters', label: 'Parameters, operation arguments as name and value', sink: params },
-                        { id: 'modified', label: 'Modified properties, what changed from what to what', sink: modprop },
-                        { id: 'mail', label: 'Mail items, folders and messages touched', sink: mail, unpackedFrom: 5 },
-                        { id: 'affected', label: 'Affected items, files and eDiscovery targets', sink: affected },
+                        { id: 'parameters', label: 'Parameters, operation arguments as name and value', sink: params, addedCols: 6 },
+                        { id: 'modified', label: 'Modified properties, what changed from what to what', sink: modprop, addedCols: 5 },
+                        { id: 'mail', label: 'Mail items, folders and messages touched', sink: mail, addedCols: 5, unpackedFrom: 5 },
+                        { id: 'affected', label: 'Affected items, files and eDiscovery targets', sink: affected, addedCols: 5 },
                         { id: 'ipsummary', label: 'IP summary, every address in the file with counts', sink: ipsum },
                         { id: 'subset', label: 'The matching rows exactly as Purview wrote them, nothing truncated, ready to load back into Logscope', sink: subset },
                     ];
                     famSinks.forEach((fs, name) => {
-                        fixed.push({ id: 'family:' + name, label: 'Rows of the ' + name + ' array inside AuditData, one line per item', sink: fs.sink, unpackedFrom: 6 });
+                        fixed.push({ id: 'family:' + name, label: 'Rows of the ' + name + ' array inside AuditData, one line per item', sink: fs.sink, addedCols: 6, unpackedFrom: 6 });
                     });
                     const tables = fixed.filter(t => t.sink.rows > (t.id === 'subset' ? 1 : 0))
                         .map(t => ({
@@ -1010,6 +1128,7 @@
                             header: t.sink.header || (t.id === 'subset' ? t.sink.sample[0] : null),
                             sample: t.id === 'subset' ? t.sink.sample.slice(1) : t.sink.sample,
                             unpackedFrom: t.unpackedFrom,
+                            addedCols: t.addedCols,
                             blob: preview ? null : t.sink.blob(),
                         }));
 
@@ -1030,5 +1149,6 @@
     window.LS_SPLIT = {
         splitUal, flatten, cleanIp, validIp, isIpv6, harvestIps,
         makeCsvStream, makeJsonStream, csvCell, csvRow, parseUtc, TEMPLATES, DERIVED_COLS,
+        parseCidrList, makeScope, isPrivateIp,
     };
 })();

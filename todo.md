@@ -30,7 +30,12 @@ one file per workload, never by column, with an opt-in that drops columns
 empty in the whole file (RowId and the timestamp can never be dropped).
 The records.csv preview carries a checkbox per column
 (untick to leave one out; RowId always stays, every table joins on it) and
-marks the columns the splitter computes (RowId, AllIPs) as "added". JSON
+marks the columns the splitter computes (RowId, AllIPs) as "added", the join
+columns copied into every joined table likewise. **IP scope**: load Microsoft's
+ServiceTags_Public JSON (user-supplied, the tool makes no network requests)
+and filter rows to private only, public only, public outside the Microsoft
+ranges, or exclude every row mentioning a Microsoft datacenter IP;
+ip-summary.csv gains a Scope column. JSON
 exports work too: each object becomes one row, converted on the fly.
 `original-rows.csv` (formerly subset.csv) is the export
 exactly as Purview wrote it, filtered, nothing truncated, reloadable. The
@@ -83,7 +88,7 @@ headlessly and is the preferred route.
  Baseline: 7 trees / 153 nodes / 61 plays / 153 terms / 29 defences /
  32 audit ops / 8 log sources / 38 symptoms.
 3. Logscope parser and rules:
- `powershell -File logscope/run-selftest.ps1` → expect `131 / 131 passed`.
+ `powershell -File logscope/run-selftest.ps1` → expect `140 / 140 passed`.
 4. Layout at any width:
  `powershell -File logscope/run-selftest.ps1 -Url "http://.../overflow.html?w=320"`
  Tested clean at 320 / 345 / 360 / 390 / 414 across 29 routes.

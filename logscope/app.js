@@ -244,6 +244,46 @@
         box.appendChild(el('p', { class: 'muted small' }, rich(
             'The **IP** filter looks at every address found anywhere in the record, including inside the JSON. A complete address must match exactly; end with a dot for a prefix, like `203.0.113.`. **Text contains** searches the whole raw row, so it reaches every value inside the AuditData JSON. Dates are read as **UTC**, the same clock Purview writes. Leave everything blank to convert the whole file.')));
 
+        box.appendChild(el('p', { class: 'sub-h', text: 'Microsoft datacenter traffic (optional)' }));
+        box.appendChild(el('p', { class: 'muted small' }, rich(
+            'Purview rows are full of Microsoft\'s own datacenter addresses; the interesting moments are the ones from anywhere else. This tool makes **no network requests**, so it will not download the list itself: fetch the current **ServiceTags_Public** JSON from Microsoft\'s official download page (search "Azure IP Ranges and Service Tags Public Cloud", updated weekly) and load it here. Any file containing CIDR ranges works.')));
+        const msStatus = el('p', { class: 'muted small', text: 'No ranges loaded yet.' });
+        const msIn = el('input', {
+            type: 'file', accept: '.json,.txt,.csv,application/json,text/plain', style: 'display:none',
+            onchange: function () {
+                const f = this.files && this.files[0];
+                this.value = '';
+                if (!f) return;
+                f.text().then(text => {
+                    const r = SPLIT.parseCidrList(text);
+                    if (!r.count) { toast('No IP ranges found in that file'); return; }
+                    msRanges = r;
+                    msStatus.textContent = r.v4.length.toLocaleString() + ' IPv4 and ' + r.v6.length.toLocaleString() + ' IPv6 ranges loaded from ' + f.name + '.';
+                    scopeSel.querySelectorAll('option[data-needs-ranges]').forEach(o => { o.disabled = false; });
+                    toast(r.count.toLocaleString() + ' Microsoft ranges loaded');
+                });
+            },
+        });
+        box.appendChild(msIn);
+        box.appendChild(el('div', { class: 'btn-row' }, [
+            el('button', { class: 'btn ghost', type: 'button', onclick: () => msIn.click() }, 'Load the Microsoft ranges file'),
+        ]));
+        box.appendChild(msStatus);
+
+        const scopeSel = el('select', { class: 'split-select', 'aria-label': 'IP scope filter' });
+        [['any', 'All rows (no IP scope filter)'],
+        ['private', 'Only rows mentioning a private or internal IP'],
+        ['public', 'Only rows mentioning a public IP'],
+        ['publicNotMs', 'Only rows with a public IP outside the Microsoft ranges (needs the file)'],
+        ['excludeMs', 'Exclude every row that mentions a Microsoft datacenter IP (needs the file)']]
+            .forEach(([v, label]) => {
+                const o = el('option', { value: v, text: label });
+                if (v === 'publicNotMs' || v === 'excludeMs') { o.setAttribute('data-needs-ranges', '1'); o.disabled = true; }
+                scopeSel.appendChild(o);
+            });
+        box.appendChild(scopeSel);
+        box.appendChild(el('p', { class: 'muted small', text: 'The scope looks at every IP in the row. Rows without any IP stay only under "All rows" and "Exclude Microsoft". Every kept row still carries its timestamp, so the remaining moments read as a timeline.' }));
+
         box.appendChild(el('p', { class: 'sub-h', text: 'What shape should the output have?' }));
         const msel = el('select', { class: 'split-select', 'aria-label': 'Output shape' });
         msel.appendChild(el('option', { value: 'flat', text: 'One flat file: complete rows, every column, mail items on their own lines' }));
@@ -355,6 +395,12 @@
             if (filters.to && isNaN(SPLIT.parseUtc(filters.to))) { toast('To date: use YYYY-MM-DD'); fields.to.focus(); return; }
             filters.template = tsel.value;
             filters.columns = colPick;
+            filters.scope = scopeSel.value;
+            filters.msRanges = msRanges;
+            if ((filters.scope === 'publicNotMs' || filters.scope === 'excludeMs') && !msRanges) {
+                toast('Load the Microsoft ranges file first');
+                return;
+            }
             filters.flat = msel.value === 'flat';
             filters.flatSplit = filters.flat && flatChecks.flatSplit.checked;
             filters.flatLean = filters.flat && flatChecks.flatLean.checked;
@@ -444,6 +490,7 @@
     let splitUrls = [];   // blob URLs of the previous run, revoked on replace
     let colPick = {};      // records.csv column unticks, by column name
     let sampleToggles = {};  // table id -> checkbox state, mirrored next to each sample
+    let msRanges = null;   // parsed Microsoft datacenter ranges, loaded from a file
 
     /** A compact preview table: header plus the first rows, cells clipped for
         display only. The downloadable file is never clipped this way. The
@@ -475,6 +522,7 @@
             t.header.forEach((h, i) => {
                 const th = el('th');
                 const derived = SPLIT.DERIVED_COLS[h];
+                const addedByPos = t.addedCols !== undefined && i < t.addedCols && h !== 'RowId';
                 const unpacked = t.unpackedFrom !== undefined && i >= t.unpackedFrom;
                 const protectedCol = h === 'RowId' || /^creation(date|time)$/i.test(h);
                 if (pickable) {
@@ -489,8 +537,9 @@
                 } else {
                     th.textContent = clip(h);
                     if (derived) th.title = derived;
+                    else if (addedByPos) th.title = 'added by the splitter: copied from the parent record so this table stands alone';
                 }
-                if (derived) {
+                if (derived || addedByPos) {
                     th.classList.add('derived');
                     th.appendChild(el('i', { class: 'added-tag', text: 'added' }));
                 }
@@ -599,6 +648,13 @@
                 (stats.flatSplit ? ', split into ' + wls + ' file(s) by workload, rows only, never columns' : ' in one file') +
                 (stats.mailExpanded ? '. ' + stats.mailExpanded.toLocaleString() + ' extra line(s) were added so each mail item sits on its own row, carrying the full record (IP, device, timestamp) with it' : '') +
                 (stats.flatLean ? '. Columns empty in the whole file are left out (untick the lean option to keep every column name)' : '') + '.')));
+        }
+        if (stats.scopeCounts && (stats.msRanges || (stats.scopeCounts.private + stats.scopeCounts.public + stats.scopeCounts.microsoft) > 0)) {
+            host.appendChild(el('p', { class: 'muted small' }, rich(
+                'Distinct addresses in the whole file: **' + stats.scopeCounts.private.toLocaleString() + ' private**, **' +
+                stats.scopeCounts.microsoft.toLocaleString() + ' Microsoft datacenter**' +
+                (stats.msRanges ? ' (matched against ' + stats.msRanges.toLocaleString() + ' loaded ranges)' : ' (no ranges file loaded)') +
+                ', **' + stats.scopeCounts.public.toLocaleString() + ' other public**. The Scope column in ip-summary.csv carries the class per address.')));
         }
         if (stats.userDropped) {
             host.appendChild(el('p', { class: 'muted small', text: stats.userDropped + ' column(s) you unticked are left out of records.csv. Tick them again in the preview to bring them back.' }));

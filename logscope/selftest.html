@@ -286,6 +286,24 @@
             ok('bracketed IPv6 with port still resolves',
                 LS_SPLIT.cleanIp('[2001:db8::1]:51142') === '2001:db8::1');
 
+            /* IP scoping: private is static knowledge, microsoft comes from a
+               user-loaded ranges file, everything else is public. */
+            ok('private ranges are recognised',
+                LS_SPLIT.isPrivateIp('192.168.1.10') && LS_SPLIT.isPrivateIp('10.0.0.1') &&
+                LS_SPLIT.isPrivateIp('172.20.1.1') && LS_SPLIT.isPrivateIp('fe80::1') &&
+                LS_SPLIT.isPrivateIp('fd00::5') && !LS_SPLIT.isPrivateIp('8.8.8.8') && !LS_SPLIT.isPrivateIp('20.50.71.38'));
+            (function () {
+                const ranges = LS_SPLIT.parseCidrList('{"values":[{"properties":{"addressPrefixes":["20.0.0.0/8","2603:1000::/24","999.1.1.1/8"]}}]}');
+                ok('cidr list parsed from ServiceTags-style JSON', ranges.v4.length === 1 && ranges.v6.length === 1, ranges.count);
+                const scope = LS_SPLIT.makeScope(ranges);
+                ok('a datacenter IPv4 classifies as microsoft', scope('20.50.71.38') === 'microsoft', scope('20.50.71.38'));
+                ok('a datacenter IPv6 classifies as microsoft', scope('2603:1026:c0a:1821::5') === 'microsoft', scope('2603:1026:c0a:1821::5'));
+                ok('private beats every range', scope('192.168.1.10') === 'private');
+                ok('everything else is public', scope('8.8.8.8') === 'public');
+                const bare = LS_SPLIT.makeScope(null);
+                ok('without a ranges file nothing is microsoft', bare('20.50.71.38') === 'public');
+            })();
+
             /* Excel-facing cells truncate with a marker; raw cells must not,
                because original-rows.csv is re-ingested and JSON does not
                survive a cut. */
@@ -403,6 +421,12 @@
                     ok('split: parameters lifted into their own table',
                         t['parameters.csv'] && t['parameters.csv'].rows === 2,
                         t['parameters.csv'] && t['parameters.csv'].rows);
+                    ok('split: joined tables mark their copied join columns',
+                        t['parameters.csv'].addedCols === 6 && t['Actor.csv'].addedCols === 6,
+                        t['parameters.csv'].addedCols + '/' + t['Actor.csv'].addedCols);
+                    ok('split: ip-summary carries the scope class',
+                        t['ip-summary.csv'].header[1] === 'Scope',
+                        t['ip-summary.csv'].header.join(','));
                     ok('split: mail items lifted into their own table',
                         t['mail-items.csv'] && t['mail-items.csv'].rows === 3,
                         t['mail-items.csv'] && t['mail-items.csv'].rows);
