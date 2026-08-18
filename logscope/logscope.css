@@ -683,6 +683,18 @@ td .sub {
     accent-color: var(--accent);
 }
 
+.split-check.block {
+    display: flex;
+    align-items: flex-start;
+    max-width: 60ch;
+    margin: .3rem 0;
+}
+
+.split-check.block input {
+    margin-top: .2rem;
+    flex: none;
+}
+
 .split-select {
     font: inherit;
     font-size: .9rem;
@@ -744,6 +756,27 @@ td .sub {
 
 .sample-table th.derived {
     color: var(--accent);
+}
+
+/* columns unpacked from the AuditData JSON, indented to show their origin */
+.sample-table th.unpacked {
+    padding-left: 1.3rem;
+    position: relative;
+}
+
+.sample-table th.unpacked::before {
+    content: '\21B3';
+    position: absolute;
+    left: .35rem;
+    color: var(--accent);
+}
+
+.sample-table td.unpacked {
+    background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+
+.sample > summary .split-check {
+    margin-right: .5rem;
 }
 
 .col-pick {

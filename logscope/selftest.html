@@ -565,24 +565,87 @@
                                                                                                     ok('split: converted JSON reloads into the analyser',
                                                                                                         rej.kind === 'ual' && rej.events.length === 2, rej.kind + '/' + rej.events.length);
 
-                                                                                                    /* The offline shell must be installable: one bad path
-                                                                                                       aborts the whole service worker install atomically. */
-                                                                                                    fetch('../sw.js').then(function (r) { return r.text(); }).then(function (sw) {
-                                                                                                        const shell = (sw.match(/'(\.\/[^']*)'/g) || []).map(function (x) { return x.slice(3, -1); });
-                                                                                                        ok('sw: shell list found', shell.length > 15, shell.length);
-                                                                                                        return Promise.all(shell.map(function (u) {
-                                                                                                            return fetch('../' + u).then(function (r) { return r.ok ? null : u; }).catch(function () { return u; });
-                                                                                                        }));
-                                                                                                    }).then(function (results) {
-                                                                                                        const broken = results.filter(function (x) { return x; });
-                                                                                                        ok('sw: every shell entry resolves, so the offline install cannot abort',
-                                                                                                            broken.length === 0, broken.join(', '));
-                                                                                                        /* By now DOMContentLoaded has fired and app.js has
-                                                                                                           booted, so parse AND runtime errors are visible. */
-                                                                                                        ok('every script parsed and booted without errors',
-                                                                                                            window.__SCRIPT_ERRORS.length === 0, window.__SCRIPT_ERRORS.join(' | '));
-                                                                                                        ok('the UI module exposed its API', !!(window.LOGSCOPE && window.LOGSCOPE.report));
-                                                                                                        render();
+                                                                                                    /* ---------- flat mode: complete rows, never split by column ---------- */
+                                                                                                    function shellCheckAndFinish() {
+                                                                                                        /* The offline shell must be installable: one bad path
+                                                                                                           aborts the whole service worker install atomically. */
+                                                                                                        fetch('../sw.js').then(function (r) { return r.text(); }).then(function (sw) {
+                                                                                                            const shell = (sw.match(/'(\.\/[^']*)'/g) || []).map(function (x) { return x.slice(3, -1); });
+                                                                                                            ok('sw: shell list found', shell.length > 15, shell.length);
+                                                                                                            return Promise.all(shell.map(function (u) {
+                                                                                                                return fetch('../' + u).then(function (r) { return r.ok ? null : u; }).catch(function () { return u; });
+                                                                                                            }));
+                                                                                                        }).then(function (results) {
+                                                                                                            const broken = results.filter(function (x) { return x; });
+                                                                                                            ok('sw: every shell entry resolves, so the offline install cannot abort',
+                                                                                                                broken.length === 0, broken.join(', '));
+                                                                                                            /* By now DOMContentLoaded has fired and app.js has
+                                                                                                               booted, so parse AND runtime errors are visible. */
+                                                                                                            ok('every script parsed and booted without errors',
+                                                                                                                window.__SCRIPT_ERRORS.length === 0, window.__SCRIPT_ERRORS.join(' | '));
+                                                                                                            ok('the UI module exposed its API', !!(window.LOGSCOPE && window.LOGSCOPE.report));
+                                                                                                            render();
+                                                                                                        });
+                                                                                                    }
+
+                                                                                                    LS_SPLIT.splitUal(splitFile, { flat: true, tables: { ipsummary: false, subset: false } }, {
+                                                                                                        progress: function () { },
+                                                                                                        error: function (m) { ok('split: flat mode runs', false, m); render(); },
+                                                                                                        done: function (tF, sF) {
+                                                                                                            ok('flat: one file with complete rows', tF.length === 1 && tF[0].filename === 'events-flat.csv',
+                                                                                                                tF.map(function (x) { return x.filename; }).join(','));
+                                                                                                            ok('flat: mail items expand to their own lines (4 records, 5 lines)',
+                                                                                                                tF[0].rows === 5 && sF.mailExpanded === 1, tF[0].rows + '/' + sF.mailExpanded);
+                                                                                                            const h = tF[0].header;
+                                                                                                            ok('flat: row starts with the original export columns',
+                                                                                                                h[0] === 'RowId' && h[1] === 'CreationDate' && h[4] === 'AuditData' && h[5] === 'AllIPs',
+                                                                                                                h.slice(0, 6).join(','));
+                                                                                                            ok('flat: unpacked columns are marked from the boundary',
+                                                                                                                tF[0].unpackedFrom === 6, tF[0].unpackedFrom);
+                                                                                                            /* the correlation the mode exists for: message + IP on ONE line */
+                                                                                                            const im = h.indexOf('Item.InternetMessageId');
+                                                                                                            const ci = h.indexOf('ClientIP');
+                                                                                                            const line = tF[0].sample.filter(function (r) { return r[im] === '<m2>'; })[0];
+                                                                                                            ok('flat: a mail item and its IP share one row',
+                                                                                                                !!line && line[ci] === '203.0.113.9' && line[h.indexOf('CreationDate')] !== '',
+                                                                                                                line ? line[ci] : 'row not found');
+
+                                                                                                            LS_SPLIT.splitUal(splitFile, { flat: true, flatSplit: true, tables: { ipsummary: false, subset: false } }, {
+                                                                                                                progress: function () { },
+                                                                                                                error: function (m) { ok('split: flat workload split runs', false, m); render(); },
+                                                                                                                done: function (tW, sW) {
+                                                                                                                    const names = tW.map(function (x) { return x.filename; }).sort();
+                                                                                                                    ok('flat: rows split by workload, columns never',
+                                                                                                                        names.join(',') === 'events-Exchange.csv,events-other.csv' &&
+                                                                                                                        sW.workloads.length === 2, names.join(','));
+                                                                                                                    LS_SPLIT.splitUal(splitFile, { flat: true, flatSplit: true, flatSkip: { other: true }, tables: { ipsummary: false, subset: false } }, {
+                                                                                                                        progress: function () { },
+                                                                                                                        error: function (m) { ok('split: flat skip runs', false, m); render(); },
+                                                                                                                        done: function (tS, sS) {
+                                                                                                                            ok('flat: an unticked workload file is not written',
+                                                                                                                                tS.length === 1 && tS[0].filename === 'events-Exchange.csv' &&
+                                                                                                                                sS.workloads.filter(function (w) { return w.name === 'other'; })[0].enabled === false,
+                                                                                                                                tS.map(function (x) { return x.filename; }).join(','));
+                                                                                                                            const leanCsv = 'CreationDate,UserIds,Operations,AuditData,EmptyCol\r\n' +
+                                                                                                                                '2026-07-30T08:00:00Z,kim@contoso.com,Op,"{""CreationTime"":""2026-07-30T08:00:00"",""Operation"":""Op"",""UserId"":""kim@contoso.com"",""OnlyHere"":""x""}",\r\n';
+                                                                                                                            const leanFile = new File([leanCsv], 'lean.csv', { type: 'text/csv' });
+                                                                                                                            LS_SPLIT.splitUal(leanFile, { flat: true, flatLean: true, columns: { CreationDate: false, UserIds: false }, tables: { ipsummary: false, subset: false } }, {
+                                                                                                                                progress: function () { },
+                                                                                                                                error: function (m) { ok('split: flat lean runs', false, m); render(); },
+                                                                                                                                done: function (tL) {
+                                                                                                                                    const hl = tL[0].header;
+                                                                                                                                    ok('flat: lean drops the all-empty column, keeps the filled one',
+                                                                                                                                        hl.indexOf('EmptyCol') < 0 && hl.indexOf('OnlyHere') >= 0, hl.join(','));
+                                                                                                                                    ok('flat: the timestamp survives every untick',
+                                                                                                                                        hl.indexOf('CreationDate') >= 0 && hl.indexOf('UserIds') < 0, hl.join(','));
+                                                                                                                                    shellCheckAndFinish();
+                                                                                                                                },
+                                                                                                                            });
+                                                                                                                        },
+                                                                                                                    });
+                                                                                                                },
+                                                                                                            });
+                                                                                                        },
                                                                                                     });
                                                                                                 });
                                                                                             },

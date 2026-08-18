@@ -494,6 +494,15 @@
         const partial = limit < file.size;
         const chosen = filters.tables || null;
         const wants = id => !chosen || !!chosen[id];
+        /* Flat mode: one row keeps every column; mail items expand into one
+           row each, carrying the whole record with them. Optionally the rows
+           are split into one file per Workload, never by column. */
+        const flatMode = !!filters.flat;
+        const flatSplit = flatMode && !!filters.flatSplit;
+        const flatLean = flatMode && !!filters.flatLean;
+        const flatSkip = filters.flatSkip || {};
+        const wlStat = new Map();      // workload -> { rows, filledOrig, filledFlat, hasMail }
+        const wlKey = ad => String((ad && ad.Workload) || 'other');
         const stats = {
             rows: 0, parsed: 0, unparsed: 0, matched: 0,
             first: '', last: '', ips: 0, users: new Set(), ops: new Map(),
@@ -502,6 +511,8 @@
             template: TEMPLATES[filters.template] ? filters.template : 'all',
             templateMissing: [],
             families: [], familiesDropped: 0, familyCapped: [],
+            flat: flatMode, flatSplit: flatSplit, flatLean: flatLean,
+            workloads: [], mailExpanded: 0,
         };
 
         /* One row stream for both input kinds. A JSON export (an array of
@@ -596,6 +607,22 @@
                     stats.unparsed++;
                     ips = harvestIps({}, row.join(' '));
                 }
+                if (flatMode) {
+                    /* Which columns actually carry a value, per workload, so
+                       the lean option can drop the ones empty everywhere. */
+                    const wl = wlKey(ad);
+                    let w = wlStat.get(wl);
+                    if (!w) { w = { rows: 0, filledOrig: new Set(), filledFlat: new Set(), hasMail: false }; wlStat.set(wl, w); }
+                    w.rows++;
+                    for (let ci = 0; ci < header.length; ci++) {
+                        if (row[ci] !== undefined && row[ci] !== '') w.filledOrig.add(ci);
+                    }
+                    if (ad) {
+                        const fl = flatten(ad, '', Object.create(null));
+                        Object.keys(fl).forEach(k => { if (fl[k] !== '') w.filledFlat.add(k); });
+                        if (Array.isArray(ad.Folders) && ad.Folders.some(f => f && ((f.FolderItems || []).length || f.Path))) w.hasMail = true;
+                    }
+                }
                 if (created) {
                     if (!stats.first || created < stats.first) stats.first = created;
                     if (!stats.last || created > stats.last) stats.last = created;
@@ -625,8 +652,164 @@
                 limit);
         }
 
+        /* ---------------- pass two, flat: complete rows, never split by column */
+        function passTwoFlat() {
+            const ranked = Array.from(colCount.entries()).sort((a, b) => b[1] - a[1]);
+            const unpackedAll = ranked.slice(0, MAX_COLS).map(e => e[0]).sort();
+            stats.droppedCols += Math.max(0, ranked.length - MAX_COLS);
+            stats.availableCols = ranked.length;
+
+            const isTs = c => /^creation(date|time)$/i.test(String(c));
+            const colOff = filters.columns || null;
+            /* The row must stay complete where it matters: the join key and
+               the timestamp can never be unticked. */
+            const droppedCol = c => !!colOff && colOff[c] === false && c !== 'RowId' && !isTs(c);
+
+            const ITEM_COLS = ['Folder.Path', 'Item.Index', 'Item.InternetMessageId', 'Item.SizeInBytes', 'Item.Subject'];
+            const subset = makeSink('original-rows.csv', null, true);
+            const ipsum = makeSink('ip-summary.csv', ['IP', 'Records', 'FirstSeen', 'LastSeen', 'DistinctUsers', 'Users', 'Operations']);
+            if (wants('subset')) subset.write(header);
+
+            /* One sink per workload when splitting by rows, one for the lot
+               otherwise. Every file carries the full column set unless the
+               lean option drops columns that are empty in that whole file. */
+            const usedNames = new Set(['ip-summary.csv', 'original-rows.csv']);
+            const sinks = new Map();
+            const wlNames = flatSplit ? Array.from(wlStat.keys()) : ['all'];
+            const unionW = { rows: 0, filledOrig: new Set(), filledFlat: new Set(), hasMail: false };
+            wlStat.forEach(w => {
+                unionW.rows += w.rows;
+                w.filledOrig.forEach(i => unionW.filledOrig.add(i));
+                w.filledFlat.forEach(k => unionW.filledFlat.add(k));
+                if (w.hasMail) unionW.hasMail = true;
+            });
+            wlNames.forEach(wl => {
+                const w = flatSplit ? wlStat.get(wl) : unionW;
+                const enabled = flatSkip[wl] !== true;
+                stats.workloads.push({ name: wl, records: w.rows, enabled: enabled });
+                if (!enabled) return;
+                const headKeep = [];
+                header.forEach((h, i) => {
+                    if (droppedCol(h)) return;
+                    if (flatLean && !w.filledOrig.has(i) && !isTs(h)) return;
+                    headKeep.push(i);
+                });
+                const unpackedKeep = unpackedAll.filter(k => {
+                    if (droppedCol(k)) return false;
+                    if (flatLean && !w.filledFlat.has(k)) return false;
+                    return true;
+                });
+                const itemKeep = w.hasMail ? ITEM_COLS : [];
+                const base = (wl === 'all' ? 'events-flat' : 'events-' + wl.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 40));
+                let fn = base + '.csv', n = 2;
+                while (usedNames.has(fn.toLowerCase())) { fn = base + '-' + (n++) + '.csv'; }
+                usedNames.add(fn.toLowerCase());
+                const cols = ['RowId'].concat(headKeep.map(i => header[i]), ['AllIPs'], unpackedKeep, itemKeep);
+                sinks.set(wl, {
+                    headKeep: headKeep, unpackedKeep: unpackedKeep, itemKeep: itemKeep,
+                    unpackedFrom: 1 + headKeep.length + 1,
+                    sink: makeSink(fn, cols),
+                });
+            });
+
+            let hdr2 = jsonMode, rowId = 0;
+            const src = makeSource(function (row) {
+                if (!hdr2) { hdr2 = true; return; }
+                if (row.length === 1 && row[0] === '') return;
+                rowId++;
+                const o = rowObject(header, row);
+                const adRaw = pick(o, ['AuditData', 'auditdata']);
+                const ad = parseJson(adRaw);
+                const created = (ad && pick(ad, ['CreationTime'])) || pick(o, ['CreationDate', 'CreationTime']);
+                const user = (ad && pick(ad, ['UserId'])) || pick(o, ['UserIds', 'UserId']);
+                const op = (ad && pick(ad, ['Operation'])) || pick(o, ['Operations', 'Operation']);
+                const fl = ad ? flatten(ad, '', Object.create(null)) : {};
+                const ips = ad ? harvestIps(fl, adRaw) : harvestIps({}, row.join(' '));
+                const hay = filters.text ? row.join('\u0000').toLowerCase() : '';
+                if (!matches(filters, ips, user, op, created, hay)) return;
+                stats.matched++;
+
+                if (wants('subset')) subset.write(row);
+
+                const s = sinks.get(flatSplit ? wlKey(ad) : 'all');
+                if (!s) return;
+                const front = [rowId].concat(
+                    s.headKeep.map(i => row[i] === undefined ? '' : row[i]),
+                    [ips.join('; ')],
+                    s.unpackedKeep.map(k => fl[k]));
+                if (s.itemKeep.length && ad && Array.isArray(ad.Folders) && ad.Folders.length) {
+                    /* One line per mail item, the whole record repeated on
+                       each, so message, IP, device and timestamp share a row. */
+                    let wrote = 0;
+                    ad.Folders.forEach(f => {
+                        const path = (f && f.Path) || '';
+                        const items = (f && f.FolderItems && f.FolderItems.length) ? f.FolderItems : [null];
+                        items.forEach((it, idx) => {
+                            s.sink.write(front.concat([path, idx,
+                                (it && it.InternetMessageId) || '',
+                                (it && it.SizeInBytes) || '',
+                                (it && it.Subject) || '']));
+                            wrote++;
+                        });
+                    });
+                    if (wrote > 1) stats.mailExpanded += wrote - 1;
+                } else {
+                    s.sink.write(s.itemKeep.length ? front.concat(['', '', '', '', '']) : front);
+                }
+            });
+
+            streamFile(file,
+                t => src.push(t),
+                function () {
+                    if (!partial) src.end();
+                    if (wants('ipsummary')) {
+                        Array.from(ipStat.entries())
+                            .sort((a, b) => b[1].n - a[1].n)
+                            .forEach(([ip, s]) => ipsum.write([
+                                ip, s.n, s.first, s.last, s.users.size,
+                                Array.from(s.users).join('; '),
+                                Array.from(s.ops).join('; '),
+                            ]));
+                    }
+
+                    const fixed = [];
+                    sinks.forEach((s, wl) => {
+                        fixed.push({
+                            id: 'flat:' + wl, sink: s.sink, unpackedFrom: s.unpackedFrom,
+                            label: wl === 'all'
+                                ? 'Every event with every column on one row; mail items expanded to one line each'
+                                : 'Complete rows for the ' + wl + ' workload, every column, mail items expanded',
+                        });
+                    });
+                    fixed.push({ id: 'ipsummary', label: 'IP summary, every address in the file with counts', sink: ipsum });
+                    fixed.push({ id: 'subset', label: 'The matching rows exactly as the export wrote them, nothing truncated, ready to load back into Logscope', sink: subset });
+                    const tables = fixed.filter(t => t.sink.rows > (t.id === 'subset' ? 1 : 0))
+                        .map(t => ({
+                            id: t.id,
+                            label: t.label,
+                            filename: t.sink.filename,
+                            rows: t.id === 'subset' ? t.sink.rows - 1 : t.sink.rows,
+                            header: t.sink.header || (t.id === 'subset' ? t.sink.sample[0] : null),
+                            sample: t.id === 'subset' ? t.sink.sample.slice(1) : t.sink.sample,
+                            unpackedFrom: t.unpackedFrom,
+                            blob: preview ? null : t.sink.blob(),
+                        }));
+
+                    stats.topOps = Array.from(stats.ops.entries()).sort((a, b) => b[1] - a[1]).slice(0, 12);
+                    stats.userCount = stats.users.size;
+                    const firstFlat = tables.filter(t => t.id.indexOf('flat:') === 0)[0];
+                    stats.columns = firstFlat ? firstFlat.header.length : 0;
+                    stats.baseCols = 0;
+                    cb.done(tables, stats);
+                },
+                e => cb.error('Could not read the file: ' + (e && e.message ? e.message : e)),
+                (a, b) => cb.progress('Building the tables', a, b, 1),
+                limit);
+        }
+
         /* ---------------- pass two: write the tables ---------------- */
         function passTwo() {
+            if (flatMode) return passTwoFlat();
             const ranked = Array.from(colCount.entries())
                 .filter(e => BASE_COLS.indexOf(e[0]) < 0)
                 .sort((a, b) => b[1] - a[1]);
@@ -654,9 +837,10 @@
             }
             stats.availableCols = ranked.length;
 
-            /* Preview checkboxes can drop any column except the RowId join key. */
+            /* Preview checkboxes can drop any column except the RowId join
+               key and the timestamp: every event must keep its time. */
             const colOff = filters.columns || null;
-            const droppedCol = c => !!colOff && colOff[c] === false && c !== 'RowId';
+            const droppedCol = c => !!colOff && colOff[c] === false && c !== 'RowId' && !/^creation(date|time)$/i.test(String(c));
             const keepBase = BASE_COLS.filter(c => !droppedCol(c));
             const extraKept = extra.filter(k => !droppedCol(k));
             stats.userDropped = (BASE_COLS.length - keepBase.length) + (extra.length - extraKept.length);
@@ -806,16 +990,16 @@
                     }
 
                     const fixed = [
-                        { id: 'records', label: 'Records, one row per audit event with the JSON flattened into columns', sink: records },
+                        { id: 'records', label: 'Records, one row per audit event with the JSON flattened into columns', sink: records, unpackedFrom: keepBase.length },
                         { id: 'parameters', label: 'Parameters, operation arguments as name and value', sink: params },
                         { id: 'modified', label: 'Modified properties, what changed from what to what', sink: modprop },
-                        { id: 'mail', label: 'Mail items, folders and messages touched', sink: mail },
+                        { id: 'mail', label: 'Mail items, folders and messages touched', sink: mail, unpackedFrom: 5 },
                         { id: 'affected', label: 'Affected items, files and eDiscovery targets', sink: affected },
                         { id: 'ipsummary', label: 'IP summary, every address in the file with counts', sink: ipsum },
                         { id: 'subset', label: 'The matching rows exactly as Purview wrote them, nothing truncated, ready to load back into Logscope', sink: subset },
                     ];
                     famSinks.forEach((fs, name) => {
-                        fixed.push({ id: 'family:' + name, label: 'Rows of the ' + name + ' array inside AuditData, one line per item', sink: fs.sink });
+                        fixed.push({ id: 'family:' + name, label: 'Rows of the ' + name + ' array inside AuditData, one line per item', sink: fs.sink, unpackedFrom: 6 });
                     });
                     const tables = fixed.filter(t => t.sink.rows > (t.id === 'subset' ? 1 : 0))
                         .map(t => ({
@@ -825,6 +1009,7 @@
                             rows: t.id === 'subset' ? t.sink.rows - 1 : t.sink.rows,
                             header: t.sink.header || (t.id === 'subset' ? t.sink.sample[0] : null),
                             sample: t.id === 'subset' ? t.sink.sample.slice(1) : t.sink.sample,
+                            unpackedFrom: t.unpackedFrom,
                             blob: preview ? null : t.sink.blob(),
                         }));
 

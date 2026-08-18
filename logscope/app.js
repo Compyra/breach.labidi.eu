@@ -244,7 +244,33 @@
         box.appendChild(el('p', { class: 'muted small' }, rich(
             'The **IP** filter looks at every address found anywhere in the record, including inside the JSON. A complete address must match exactly; end with a dot for a prefix, like `203.0.113.`. **Text contains** searches the whole raw row, so it reaches every value inside the AuditData JSON. Dates are read as **UTC**, the same clock Purview writes. Leave everything blank to convert the whole file.')));
 
-        box.appendChild(el('p', { class: 'sub-h', text: 'Which tables do you need?' }));
+        box.appendChild(el('p', { class: 'sub-h', text: 'What shape should the output have?' }));
+        const msel = el('select', { class: 'split-select', 'aria-label': 'Output shape' });
+        msel.appendChild(el('option', { value: 'flat', text: 'One flat file: complete rows, every column, mail items on their own lines' }));
+        msel.appendChild(el('option', { value: 'tables', text: 'Joinable tables: records.csv plus one file per list inside the JSON' }));
+        box.appendChild(msel);
+        box.appendChild(el('p', { class: 'muted small' }, rich(
+            'The flat file never splits a row: every line carries **all** columns (timestamp, IPs, device, everything), so a message and the IP it came from sit side by side. When a record touches several mail items, the record repeats, one line per item.')));
+
+        const flatWrap = el('div');
+        const flatDefs = [
+            ['flatSplit', 'Split the rows into one file per workload (mail actions, files and urls, ...). Columns are never split.', false],
+            ['flatLean', 'Leave out columns that are empty in every row of the file. All column names show when this is off.', false],
+        ];
+        const flatChecks = {};
+        flatDefs.forEach(([id, label, def]) => {
+            const lab = el('label', { class: 'split-check block' });
+            const cbx = el('input', { type: 'checkbox' });
+            cbx.checked = def;
+            flatChecks[id] = cbx;
+            lab.appendChild(cbx);
+            lab.appendChild(el('span', { text: label }));
+            flatWrap.appendChild(lab);
+        });
+        box.appendChild(flatWrap);
+
+        const tablesWrap = el('div');
+        tablesWrap.appendChild(el('p', { class: 'sub-h', text: 'Which tables do you need?' }));
         const tableDefs = [
             ['records', 'records.csv', 'one row per event, the JSON as columns'],
             ['parameters', 'parameters.csv', 'operation arguments, name and value'],
@@ -265,8 +291,8 @@
             lab.appendChild(el('span', { text: name }));
             twrap.appendChild(lab);
         });
-        box.appendChild(twrap);
-        box.appendChild(el('p', { class: 'muted small', text: 'Tables with no rows are skipped automatically. Keep original-rows.csv ticked if you may want to reload the result into the analyser.' }));
+        tablesWrap.appendChild(twrap);
+        tablesWrap.appendChild(el('p', { class: 'muted small', text: 'Tables with no rows are skipped automatically. Keep original-rows.csv ticked if you may want to reload the result into the analyser.' }));
 
         /* Tables discovered inside the JSON (Actor, Target, ...) vary per
            file, so their checkboxes appear once a preview or split has seen
@@ -274,8 +300,11 @@
         const famChecks = {};
         const famWrap = el('div', { class: 'split-tables', hidden: true });
         const famNote = el('p', { class: 'muted small', text: 'Every array inside AuditData (Actor, Target, and so on) also becomes its own table. Run a preview to list the ones in this file; all of them are included unless you untick them here.' });
-        box.appendChild(famNote);
-        box.appendChild(famWrap);
+        tablesWrap.appendChild(famNote);
+        tablesWrap.appendChild(famWrap);
+
+        const tmplWrap = el('div');
+        box.appendChild(tablesWrap);
 
         function updateFamilies(list) {
             (list || []).forEach(f => {
@@ -294,13 +323,23 @@
             }
         }
 
-        box.appendChild(el('p', { class: 'sub-h', text: 'Columns in records.csv' }));
+        tmplWrap.appendChild(el('p', { class: 'sub-h', text: 'Columns in records.csv' }));
         const tsel = el('select', { class: 'split-select', 'aria-label': 'Column template for records.csv' });
         Object.keys(SPLIT.TEMPLATES).forEach(id => {
             tsel.appendChild(el('option', { value: id, text: SPLIT.TEMPLATES[id].label }));
         });
-        box.appendChild(tsel);
-        box.appendChild(el('p', { class: 'muted small', text: 'The join and who-when-what columns (RowId, RecordId, CreationDate, UserId, Operation, Workload, RecordType, ResultStatus, ClientIP, AllIPs) are always included. A template only changes which JSON columns follow them.' }));
+        tmplWrap.appendChild(tsel);
+        tmplWrap.appendChild(el('p', { class: 'muted small', text: 'The join and who-when-what columns (RowId, RecordId, CreationDate, UserId, Operation, Workload, RecordType, ResultStatus, ClientIP, AllIPs) are always included. A template only changes which JSON columns follow them.' }));
+        box.appendChild(tmplWrap);
+
+        function syncMode() {
+            const flat = msel.value === 'flat';
+            flatWrap.hidden = !flat;
+            tablesWrap.hidden = flat;
+            tmplWrap.hidden = flat;
+        }
+        msel.addEventListener('change', syncMode);
+        syncMode();
 
         const status = el('p', { class: 'muted', 'aria-live': 'polite' });
         const bar = el('div', { class: 'progress', hidden: true }, el('i'));
@@ -316,12 +355,34 @@
             if (filters.to && isNaN(SPLIT.parseUtc(filters.to))) { toast('To date: use YYYY-MM-DD'); fields.to.focus(); return; }
             filters.template = tsel.value;
             filters.columns = colPick;
+            filters.flat = msel.value === 'flat';
+            filters.flatSplit = filters.flat && flatChecks.flatSplit.checked;
+            filters.flatLean = filters.flat && flatChecks.flatLean.checked;
+            /* The tick beside each sample mirrors the table choice. */
+            Object.keys(sampleToggles).forEach(id => {
+                if (sampleToggles[id] !== false) return;
+                if (tableChecks[id]) tableChecks[id].checked = false;
+                else if (id.indexOf('family:') === 0) { if (famChecks[id.slice(7)]) famChecks[id.slice(7)].checked = false; }
+            });
+            filters.flatSkip = {};
+            Object.keys(sampleToggles).forEach(id => {
+                if (id.indexOf('flat:') === 0 && sampleToggles[id] === false) filters.flatSkip[id.slice(5)] = true;
+            });
             filters.tables = {};
             let any = false;
-            Object.keys(tableChecks).forEach(id => {
-                filters.tables[id] = tableChecks[id].checked;
-                if (tableChecks[id].checked) any = true;
-            });
+            if (filters.flat) {
+                filters.tables = {
+                    records: false, parameters: false, modified: false, mail: false, affected: false,
+                    ipsummary: sampleToggles.ipsummary !== false,
+                    subset: sampleToggles.subset !== false && tableChecks.subset.checked,
+                };
+                any = true;
+            } else {
+                Object.keys(tableChecks).forEach(id => {
+                    filters.tables[id] = tableChecks[id].checked;
+                    if (tableChecks[id].checked) any = true;
+                });
+            }
             filters.families = {};
             Object.keys(famChecks).forEach(name => {
                 filters.families[name] = famChecks[name].checked;
@@ -382,28 +443,45 @@
 
     let splitUrls = [];   // blob URLs of the previous run, revoked on replace
     let colPick = {};      // records.csv column unticks, by column name
+    let sampleToggles = {};  // table id -> checkbox state, mirrored next to each sample
 
     /** A compact preview table: header plus the first rows, cells clipped for
         display only. The downloadable file is never clipped this way. The
-        records.csv header carries a checkbox per column, and columns the
-        splitter computes (rather than copies) are marked "added". */
+        summary line carries the same tick as the table list, so a table can
+        be deselected while looking at its rows. Columns unpacked from the
+        AuditData JSON are shown indented; computed columns wear "added". */
     function sampleTable(t, open) {
         const wrap = el('details', { class: 'sample' });
         if (open) wrap.open = true;
-        wrap.appendChild(el('summary', { text: t.filename + '  \u00b7  first ' + t.sample.length + ' row' + (t.sample.length === 1 ? '' : 's') }));
+        const summary = el('summary');
+        if (t.id) {
+            const lab = el('label', { class: 'split-check', title: 'untick to leave this file out of the next run' });
+            const cbx = el('input', { type: 'checkbox' });
+            cbx.checked = sampleToggles[t.id] !== false;
+            cbx.addEventListener('click', e => e.stopPropagation());
+            cbx.addEventListener('change', () => { sampleToggles[t.id] = cbx.checked; });
+            lab.addEventListener('click', e => e.stopPropagation());
+            lab.appendChild(cbx);
+            summary.appendChild(lab);
+        }
+        summary.appendChild(el('span', { text: t.filename + '  \u00b7  first ' + t.sample.length + ' row' + (t.sample.length === 1 ? '' : 's') }));
+        wrap.appendChild(summary);
         const scroll = el('div', { class: 'sample-wrap' });
         const table = el('table', { class: 'sample-table' });
         const clip = v => { const s = String(v === undefined ? '' : v); return s.length > 100 ? s.slice(0, 100) + '\u2026' : s; };
+        const pickable = t.id === 'records' || (t.id && t.id.indexOf('flat:') === 0);
         if (t.header) {
             const tr = el('tr');
-            t.header.forEach(h => {
+            t.header.forEach((h, i) => {
                 const th = el('th');
                 const derived = SPLIT.DERIVED_COLS[h];
-                if (t.id === 'records') {
-                    const lab = el('label', { class: 'col-pick', title: derived || ('from the export: ' + h) });
+                const unpacked = t.unpackedFrom !== undefined && i >= t.unpackedFrom;
+                const protectedCol = h === 'RowId' || /^creation(date|time)$/i.test(h);
+                if (pickable) {
+                    const lab = el('label', { class: 'col-pick', title: derived || (unpacked ? 'unpacked from the AuditData JSON: ' + h : 'from the export: ' + h) });
                     const cbx = el('input', { type: 'checkbox' });
                     cbx.checked = colPick[h] !== false;
-                    if (h === 'RowId') { cbx.disabled = true; lab.title = derived + '. Always kept: every table joins on it.'; }
+                    if (protectedCol) { cbx.disabled = true; cbx.checked = true; lab.title += '. Always kept.'; }
                     cbx.addEventListener('change', () => { colPick[h] = cbx.checked; });
                     lab.appendChild(cbx);
                     lab.appendChild(el('span', { text: clip(h) }));
@@ -416,6 +494,7 @@
                     th.classList.add('derived');
                     th.appendChild(el('i', { class: 'added-tag', text: 'added' }));
                 }
+                if (unpacked) th.classList.add('unpacked');
                 tr.appendChild(th);
             });
             table.appendChild(tr);
@@ -423,13 +502,17 @@
         t.sample.forEach(rowCells => {
             const tr = el('tr');
             const n = t.header ? t.header.length : rowCells.length;
-            for (let i = 0; i < n; i++) tr.appendChild(el('td', { text: clip(rowCells[i]) }));
+            for (let i = 0; i < n; i++) {
+                const td = el('td', { text: clip(rowCells[i]) });
+                if (t.unpackedFrom !== undefined && i >= t.unpackedFrom) td.classList.add('unpacked');
+                tr.appendChild(td);
+            }
             table.appendChild(tr);
         });
         scroll.appendChild(table);
         wrap.appendChild(scroll);
-        if (t.id === 'records') {
-            wrap.appendChild(el('p', { class: 'muted small', text: 'Untick a column to leave it out of records.csv on the next run. Columns marked "added" do not exist in the export: the splitter computes them (RowId numbers the rows for joining; AllIPs gathers every IP found anywhere in the record).' }));
+        if (pickable) {
+            wrap.appendChild(el('p', { class: 'muted small', text: 'Untick a column to leave it out on the next run; RowId and the timestamp always stay. Indented \u21b3 columns are unpacked from the AuditData JSON; columns marked "added" do not exist in the export, the splitter computes them.' }));
         }
         return wrap;
     }
@@ -509,6 +592,14 @@
             host.appendChild(el('p', { class: 'muted small', text:
                 'Template columns not present in this file: ' + stats.templateMissing.join(', ') + '. Purview only writes them for the workloads that use them.' }));
         }
+        if (stats.flat) {
+            const wls = (stats.workloads || []).filter(w => w.enabled).length;
+            host.appendChild(el('p', { class: 'muted small' }, rich(
+                'Flat output: every row keeps **all ' + (stats.columns || 0) + ' columns**' +
+                (stats.flatSplit ? ', split into ' + wls + ' file(s) by workload, rows only, never columns' : ' in one file') +
+                (stats.mailExpanded ? '. ' + stats.mailExpanded.toLocaleString() + ' extra line(s) were added so each mail item sits on its own row, carrying the full record (IP, device, timestamp) with it' : '') +
+                (stats.flatLean ? '. Columns empty in the whole file are left out (untick the lean option to keep every column name)' : '') + '.')));
+        }
         if (stats.userDropped) {
             host.appendChild(el('p', { class: 'muted small', text: stats.userDropped + ' column(s) you unticked are left out of records.csv. Tick them again in the preview to bring them back.' }));
         }
@@ -537,7 +628,7 @@
         const withSamples = tables.filter(t => t.sample && t.sample.length);
         if (withSamples.length) {
             host.appendChild(el('p', { class: 'sub-h', text: stats.preview ? 'How each file will look' : 'How each file looks inside' }));
-            withSamples.forEach(t => host.appendChild(sampleTable(t, stats.preview || t.id === 'records')));
+            withSamples.forEach(t => host.appendChild(sampleTable(t, stats.preview || t.id === 'records' || t.id.indexOf('flat:') === 0)));
         }
 
         if (stats.preview) {
