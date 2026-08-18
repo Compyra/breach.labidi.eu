@@ -246,8 +246,15 @@
 
         box.appendChild(el('p', { class: 'sub-h', text: 'Microsoft datacenter traffic (optional)' }));
         box.appendChild(el('p', { class: 'muted small' }, rich(
-            'Purview rows are full of Microsoft\'s own datacenter addresses; the interesting moments are the ones from anywhere else. This tool makes **no network requests**, so it will not download the list itself: fetch the current **ServiceTags_Public** JSON from Microsoft\'s official download page (search "Azure IP Ranges and Service Tags Public Cloud", updated weekly) and load it here. Any file containing CIDR ranges works.')));
+            'Purview rows are full of Microsoft\'s own datacenter addresses; the interesting moments are the ones from anywhere else. This tool makes **no network requests**, so it will not download the list itself: fetch the current **ServiceTags_Public** JSON from Microsoft\'s official download page (updated weekly) and load it here. Any file containing CIDR ranges works.')));
+        const msLink = el('p', { class: 'muted small' });
+        msLink.appendChild(el('a', {
+            href: 'https://www.microsoft.com/en-us/download/details.aspx?id=56519',
+            target: '_blank', rel: 'noopener noreferrer',
+        }, 'Download Azure IP Ranges and Service Tags (Public Cloud) from the official Microsoft Download Center \u2197'));
+        box.appendChild(msLink);
         const msStatus = el('p', { class: 'muted small', text: 'No ranges loaded yet.' });
+        let msFiles = [];
         const msIn = el('input', {
             type: 'file', accept: '.json,.txt,.csv,application/json,text/plain', style: 'display:none',
             onchange: function () {
@@ -257,16 +264,31 @@
                 f.text().then(text => {
                     const r = SPLIT.parseCidrList(text);
                     if (!r.count) { toast('No IP ranges found in that file'); return; }
-                    msRanges = r;
-                    msStatus.textContent = r.v4.length.toLocaleString() + ' IPv4 and ' + r.v6.length.toLocaleString() + ' IPv6 ranges loaded from ' + f.name + '.';
+                    /* Additive on purpose: Azure tags and the Microsoft 365
+                       ranges (2603:1026:: and friends) live in separate
+                       lists, and an investigation usually wants both. */
+                    msRanges = SPLIT.mergeCidrSets(msRanges, r);
+                    msFiles.push(f.name);
+                    msStatus.textContent = msRanges.v4.length.toLocaleString() + ' IPv4 and ' + msRanges.v6.length.toLocaleString() +
+                        ' IPv6 merged ranges loaded from ' + msFiles.join(' + ') +
+                        '. Load another file to add its ranges: Microsoft 365 addresses (2603:1026:: and friends) are published separately from the Azure list.';
                     scopeSel.querySelectorAll('option[data-needs-ranges]').forEach(o => { o.disabled = false; });
-                    toast(r.count.toLocaleString() + ' Microsoft ranges loaded');
+                    toast(msRanges.count.toLocaleString() + ' Microsoft ranges active');
                 });
             },
         });
         box.appendChild(msIn);
         box.appendChild(el('div', { class: 'btn-row' }, [
             el('button', { class: 'btn ghost', type: 'button', onclick: () => msIn.click() }, 'Load the Microsoft ranges file'),
+            el('button', {
+                class: 'btn ghost tiny', type: 'button',
+                onclick: () => {
+                    msRanges = null; msFiles = [];
+                    msStatus.textContent = 'No ranges loaded yet.';
+                    scopeSel.querySelectorAll('option[data-needs-ranges]').forEach(o => { o.disabled = true; });
+                    if (scopeSel.value === 'publicNotMs' || scopeSel.value === 'excludeMs') scopeSel.value = 'any';
+                },
+            }, 'Start over'),
         ]));
         box.appendChild(msStatus);
 

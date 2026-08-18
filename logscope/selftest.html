@@ -302,6 +302,17 @@
                 ok('everything else is public', scope('8.8.8.8') === 'public');
                 const bare = LS_SPLIT.makeScope(null);
                 ok('without a ranges file nothing is microsoft', bare('20.50.71.38') === 'public');
+
+                /* Overlapping ranges once broke the interval search: a probe
+                   landed on a narrow inner range and missed the broad one. */
+                const overlapping = LS_SPLIT.parseCidrList('20.0.0.0/8 20.1.0.0/16 20.2.3.0/24 30.0.0.0/8');
+                ok('overlapping ranges coalesce', overlapping.v4.length === 2, overlapping.v4.length);
+                const merged = LS_SPLIT.mergeCidrSets(
+                    LS_SPLIT.parseCidrList('2603:1026:5::/48 2620:1ec::/36'),
+                    LS_SPLIT.parseCidrList('2603:1000::/24'));
+                const mScope = LS_SPLIT.makeScope(merged);
+                ok('a broad v6 range still matches beside narrower ones',
+                    mScope('2603:1026:c0a:1821::5') === 'microsoft', mScope('2603:1026:c0a:1821::5'));
             })();
 
             /* Excel-facing cells truncate with a marker; raw cells must not,

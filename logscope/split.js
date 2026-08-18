@@ -277,13 +277,31 @@
         return n;
     }
 
+    /** Overlapping ranges break interval binary search: a probe can land on
+        a narrow inner range, walk right and miss the broad one to its left.
+        ServiceTags files overlap heavily (aggregates plus per-service tags),
+        so ranges are always coalesced after sorting. */
+    function coalesce(list, one) {
+        const out = [];
+        for (let i = 0; i < list.length; i++) {
+            const r = list[i];
+            const prev = out[out.length - 1];
+            if (prev && r[0] <= prev[1] + one) {
+                if (r[1] > prev[1]) prev[1] = r[1];
+            } else {
+                out.push([r[0], r[1]]);
+            }
+        }
+        return out;
+    }
+
     /**
      * Pull every CIDR out of any text: the official ServiceTags JSON, a CSV,
      * or a pasted list. Every range in such a file is a Microsoft range, so
      * the union is the right answer.
      */
     function parseCidrList(text) {
-        const v4 = [], v6 = [];
+        let v4 = [], v6 = [];
         const re4 = /\b(\d{1,3}(?:\.\d{1,3}){3})\/(\d{1,2})\b/g;
         let m;
         while ((m = re4.exec(text)) !== null) {
@@ -304,7 +322,20 @@
         }
         v4.sort((a, b) => a[0] - b[0]);
         v6.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+        v4 = coalesce(v4, 1);
+        v6 = coalesce(v6, 1n);
         return { v4: v4, v6: v6, count: v4.length + v6.length };
+    }
+
+    /** Additive loading: Azure tags and the Microsoft 365 ranges are
+        published as separate files, and an investigation wants both. */
+    function mergeCidrSets(a, b) {
+        if (!a) return b;
+        if (!b) return a;
+        const v4 = a.v4.concat(b.v4).sort((x, y) => x[0] - y[0]);
+        const v6 = a.v6.concat(b.v6).sort((x, y) => (x[0] < y[0] ? -1 : x[0] > y[0] ? 1 : 0));
+        const m4 = coalesce(v4, 1), m6 = coalesce(v6, 1n);
+        return { v4: m4, v6: m6, count: m4.length + m6.length };
     }
 
     /** Classifier: private, microsoft (inside the loaded ranges), or public. */
@@ -1149,6 +1180,6 @@
     window.LS_SPLIT = {
         splitUal, flatten, cleanIp, validIp, isIpv6, harvestIps,
         makeCsvStream, makeJsonStream, csvCell, csvRow, parseUtc, TEMPLATES, DERIVED_COLS,
-        parseCidrList, makeScope, isPrivateIp,
+        parseCidrList, makeScope, isPrivateIp, mergeCidrSets,
     };
 })();
