@@ -241,7 +241,7 @@
         });
         box.appendChild(grid);
         box.appendChild(el('p', { class: 'muted small' }, rich(
-            'The **IP** filter matches any address found anywhere in the record, including inside the JSON. Leave everything blank to convert the whole file.')));
+            'The **IP** filter looks at every address found anywhere in the record, including inside the JSON. A complete address must match exactly; end with a dot for a prefix, like `203.0.113.`. Dates are read as **UTC**, the same clock Purview writes. Leave everything blank to convert the whole file.')));
 
         box.appendChild(el('p', { class: 'sub-h', text: 'Which tables do you need?' }));
         const tableDefs = [
@@ -284,6 +284,9 @@
             if (!pendingBig) { toast('Choose the CSV first'); return; }
             const filters = { preview: preview };
             Object.keys(fields).forEach(k => { filters[k] = fields[k].value.trim(); });
+            /* A mistyped date must stop the run, not silently filter nothing. */
+            if (filters.from && isNaN(SPLIT.parseUtc(filters.from))) { toast('From date: use YYYY-MM-DD'); fields.from.focus(); return; }
+            if (filters.to && isNaN(SPLIT.parseUtc(filters.to))) { toast('To date: use YYYY-MM-DD'); fields.to.focus(); return; }
             filters.template = tsel.value;
             filters.tables = {};
             let any = false;
@@ -382,13 +385,21 @@
                 : 'The file is small enough that this preview covers all of it.' }));
         }
 
+        if (stats.noAuditData) {
+            host.appendChild(el('p', { class: 'lede' }, rich(
+                '**No AuditData column found.** This does not look like a Purview / Unified Audit Log export, so there is no JSON to unpack into columns. Rows are still copied and searched for IP addresses as plain text.')));
+        }
+
+        const hasSubset = tables.some(t => t.id === 'subset');
+        const hasRecords = tables.some(t => t.id === 'records');
+
         const s = el('div', { class: 'stats' });
-        [[stats.rows.toLocaleString(), 'rows read'],
-        [stats.matched.toLocaleString(), 'records written'],
-        [stats.columns, 'columns'],
+        const statList = [[stats.rows.toLocaleString(), 'rows read'],
+        [stats.matched.toLocaleString(), stats.preview ? 'rows matched' : 'records written'],
         [stats.ips.toLocaleString(), 'distinct IPs'],
-        [stats.userCount.toLocaleString(), 'accounts']]
-            .forEach(([n, l]) => {
+        [stats.userCount.toLocaleString(), 'accounts']];
+        if (hasRecords) statList.splice(2, 0, [stats.columns, 'records.csv columns']);
+        statList.forEach(([n, l]) => {
                 const c = el('div', { class: 'stat' });
                 c.appendChild(el('b', { text: String(n) }));
                 c.appendChild(el('span', { text: l }));
@@ -408,16 +419,22 @@
         }
         if (stats.droppedCols) {
             host.appendChild(el('p', { class: 'muted small' }, rich(
-                stats.droppedCols.toLocaleString() + ' rare column(s) did not fit records.csv. Nothing is lost: the full record for every row is in **subset.csv**.')));
+                stats.droppedCols.toLocaleString() + ' rare column(s) did not fit records.csv. ' +
+                (hasSubset ? 'Nothing is lost: the full record for every row is in **subset.csv**.'
+                    : 'Tick **subset.csv** and run again if you need every column.'))));
         }
         if (stats.usersCapped) {
             host.appendChild(el('p', { class: 'muted small', text: 'The account counter stopped at 5,000 distinct accounts; treat that figure as "at least".' }));
         }
         if (stats.template && stats.template !== 'all') {
             const tl = (SPLIT.TEMPLATES[stats.template] || {}).label || stats.template;
+            const tcols = Math.max(0, (stats.columns || 0) - (stats.baseCols || 10));
             host.appendChild(el('p', { class: 'muted small' }, rich(
-                'Template **' + tl + '**: records.csv carries ' + (stats.columns || 0) + ' columns, chosen from the ' +
-                (stats.availableCols || 0).toLocaleString() + ' JSON columns this file offers. A template hides nothing: **subset.csv** keeps the full record.')));
+                'Template **' + tl + '**: records.csv carries the ' + (stats.baseCols || 10) + ' fixed columns plus ' +
+                tcols + ' template column' + (tcols === 1 ? '' : 's') + ', out of ' +
+                (stats.availableCols || 0).toLocaleString() + ' JSON columns in the file. ' +
+                (hasSubset ? 'A template hides nothing: **subset.csv** keeps the full record.'
+                    : 'Tick **subset.csv** and run again if you need the rest.'))));
         }
         if (stats.templateMissing && stats.templateMissing.length) {
             host.appendChild(el('p', { class: 'muted small', text:
@@ -425,7 +442,9 @@
         }
         if (!stats.matched) {
             host.appendChild(el('p', { class: 'lede' }, rich(
-                'Nothing matched those filters. Check the IP against **ip-summary.csv**, which lists every address in the file.')));
+                stats.rows === 0
+                    ? 'The file has no data rows beyond the header.'
+                    : 'Nothing matched those filters. Check the IP against **ip-summary.csv**, which lists every address in the file.')));
         }
 
         if (!stats.preview) {
@@ -460,6 +479,7 @@
             'The other tables join back on **RowId**, and on **RecordId** where the export provides one.',
             '**subset.csv** keeps the original columns with **nothing truncated**, so if you filtered it down below 80 MB you can load it straight back into the analyser above.',
             'In the Excel-facing tables, any cell beyond the 32,767-character limit is marked `...[truncated]` rather than silently cut. The untouched value is always in subset.csv.',
+            'Log fields can contain hostile text. In the Excel-facing tables, a cell that would start with =, +, - or @ is prefixed with an apostrophe so Excel cannot run it as a formula. subset.csv keeps the original bytes.',
         ].forEach(x => how.appendChild(el('li', null, rich(x))));
         host.appendChild(how);
 

@@ -45,6 +45,11 @@
         if (v === null || v === undefined) return '';
         let s = typeof v === 'string' ? v : String(v);
         if (s.length > CELL_MAX) s = s.slice(0, CELL_MAX) + '...[truncated]';
+        /* Log fields are attacker-influenced. A cell starting with = + - @ or a
+           tab runs as a formula when the CSV opens in Excel, so those cells
+           are prefixed with an apostrophe. Plain negative numbers stay
+           numbers; subset.csv (rawCell) keeps the original bytes. */
+        if (/^[=+@\t\r]/.test(s) || (s.charAt(0) === '-' && !/^-\d+(\.\d+)?$/.test(s))) s = "'" + s;
         if (/[",\r\n]/.test(s) || /^\s|\s$/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
         return s;
     }
@@ -253,7 +258,13 @@
             if (v === null || v === undefined) return;
             if (Array.isArray(v)) {
                 if (v.length && v.every(isNameValue)) {
-                    v.forEach(x => { out[key + '.' + x.Name] = x.Value === undefined ? '' : x.Value; });
+                    v.forEach(x => {
+                        const nk = key + '.' + x.Name;
+                        const val = x.Value === undefined ? '' : x.Value;
+                        /* Repeated names keep every value, not just the last. */
+                        if (out[nk] !== undefined && out[nk] !== val) out[nk] = out[nk] + '; ' + val;
+                        else out[nk] = val;
+                    });
                     return;
                 }
                 if (!prefix && CHILD_ARRAYS[k]) return;          // handled as a table
@@ -361,7 +372,15 @@
     function matches(filters, ips, user, op, created) {
         if (filters.ip) {
             const want = filters.ip.trim().toLowerCase();
-            if (want && !ips.some(x => x === want || x.indexOf(want) >= 0)) return false;
+            if (want) {
+                /* A complete address must match exactly: 1.2.3.4 must never
+                   catch 11.2.3.45 or 1.2.3.40 in an investigation. Anything
+                   partial works as a prefix. */
+                const hit = validIp(want)
+                    ? ips.indexOf(want) >= 0
+                    : ips.some(x => x.indexOf(want) === 0);
+                if (!hit) return false;
+            }
         }
         if (filters.user) {
             if (String(user || '').toLowerCase().indexOf(filters.user.trim().toLowerCase()) < 0) return false;
@@ -423,7 +442,14 @@
         /* ---------------- pass one: learn the shape of the file ---------------- */
         function passOne() {
             const csv = makeCsvStream(function (row) {
-                if (!header) { header = row.slice(); hmap = headerIndex(header); return; }
+                if (!header) {
+                    header = row.slice();
+                    hmap = headerIndex(header);
+                    /* The one column this tool exists for. Its absence means
+                       the file is not a Purview export; say so, loudly. */
+                    stats.noAuditData = hmap['auditdata'] === undefined;
+                    return;
+                }
                 if (row.length === 1 && row[0] === '') return;
                 stats.rows++;
                 const o = rowObject(header, row);
@@ -435,7 +461,7 @@
                 let ips;
                 if (ad) {
                     stats.parsed++;
-                    const flat = flatten(ad, '', {});
+                    const flat = flatten(ad, '', Object.create(null));
                     /* Count every key on every row; gating the whole loop once
                        the cap was reached skewed the frequencies that decide
                        which columns records.csv gets. */
@@ -531,7 +557,7 @@
                 const op = (ad && pick(ad, ['Operation'])) || pick(o, ['Operations']);
                 const recId = (ad && pick(ad, ['Id', 'RecordId'])) || pick(o, ['Identity', 'RecordId']);
 
-                const flat = ad ? flatten(ad, '', {}) : {};
+                const flat = ad ? flatten(ad, '', Object.create(null)) : {};
                 const ips = ad ? harvestIps(flat, adRaw) : harvestIps({}, row.join(' '));
                 if (!matches(filters, ips, user, op, created)) return;
                 stats.matched++;
@@ -632,6 +658,7 @@
                     stats.topOps = Array.from(stats.ops.entries()).sort((a, b) => b[1] - a[1]).slice(0, 12);
                     stats.userCount = stats.users.size;
                     stats.columns = extra.length + BASE_COLS.length;
+                    stats.baseCols = BASE_COLS.length;
                     cb.done(tables, stats);
                 },
                 e => cb.error('Could not read the file: ' + (e && e.message ? e.message : e)),

@@ -334,6 +334,14 @@
                 ok('flatten leaves old/new value arrays to their own table',
                     dev['ModifiedProperties.Role'] === undefined);
                 ok('column templates are published', !!(LS_SPLIT.TEMPLATES && LS_SPLIT.TEMPLATES.device && LS_SPLIT.TEMPLATES.all));
+                const dup = LS_SPLIT.flatten({ P: [{ Name: 'X', Value: '1' }, { Name: 'X', Value: '2' }] }, '', {});
+                ok('repeated names keep every value', dup['P.X'] === '1; 2', dup['P.X']);
+
+                /* Excel executes cells starting with = + - @ as formulas. */
+                ok('formula cell is neutralised for Excel', LS_SPLIT.csvCell('=1+1') === "'=1+1", LS_SPLIT.csvCell('=1+1'));
+                ok('at-cell is neutralised for Excel', LS_SPLIT.csvCell('@cmd') === "'@cmd", LS_SPLIT.csvCell('@cmd'));
+                ok('a plain negative number stays a number', LS_SPLIT.csvCell(-5) === '-5' && LS_SPLIT.csvCell('-5.25') === '-5.25');
+                ok('a minus-led expression is neutralised', LS_SPLIT.csvCell('-1+cmd|calc') === "'-1+cmd|calc", LS_SPLIT.csvCell('-1+cmd|calc'));
             })();
 
 
@@ -439,7 +447,8 @@
                                         });
                                         const devCsv = 'CreationDate,UserIds,Operations,AuditData\r\n' +
                                             '2026-07-29T08:00:00Z,kim@contoso.com,UserLoggedIn,"' + devAd.replace(/"/g, '""') + '"\r\n' +
-                                            '2026-07-29T09:00:00Z,kim@contoso.com,UserLoggedIn,"{""CreationTime"":""2026-07-29T09:00:00"",""Id"":""d2"",""Operation"":""UserLoggedIn"",""UserId"":""kim@contoso.com"",""ClientIP"":""203.0.113.5""}"\r\n';
+                                            '2026-07-29T09:00:00Z,kim@contoso.com,UserLoggedIn,"{""CreationTime"":""2026-07-29T09:00:00"",""Id"":""d2"",""Operation"":""UserLoggedIn"",""UserId"":""kim@contoso.com"",""ClientIP"":""203.0.113.5""}"\r\n' +
+                                            '2026-07-29T10:00:00Z,kim@contoso.com,UserLoggedIn,"{""CreationTime"":""2026-07-29T10:00:00"",""Id"":""d3"",""Operation"":""UserLoggedIn"",""UserId"":""kim@contoso.com"",""ClientIP"":""203.0.113.55""}"\r\n';
                                         const devFile = new File([devCsv], 'dev.csv', { type: 'text/csv' });
                                         const only = { records: true, parameters: false, modified: false, mail: false, affected: false, ipsummary: false, subset: false };
 
@@ -450,6 +459,7 @@
                                                 ok('split: only the ticked table is produced',
                                                     tD.length === 1 && tD[0].filename === 'records.csv',
                                                     tD.map(function (x) { return x.filename; }).join(','));
+                                                ok('split: a real export is not flagged as missing AuditData', sD.noAuditData === false);
                                                 const hdr = tD[0].header;
                                                 ok('split: template turns device pairs into columns',
                                                     hdr.indexOf('DeviceProperties.OS') >= 0 && hdr.indexOf('ExtendedProperties.UserAgent') >= 0,
@@ -468,17 +478,43 @@
                                                     done: function (tP, sP) {
                                                         ok('split: preview marks itself and writes no files',
                                                             sP.preview === true && tP.every(function (x) { return x.blob === null; }));
-                                                        ok('split: preview still parses the rows', sP.matched === 2, sP.matched);
+                                                        ok('split: preview still parses the rows', sP.matched === 3, sP.matched);
                                                         const rp = tP.filter(function (x) { return x.filename === 'records.csv'; })[0];
                                                         ok('split: preview carries sample rows',
-                                                            rp && rp.sample.length === 2 && rp.header[0] === 'RowId',
+                                                            rp && rp.sample.length === 3 && rp.header[0] === 'RowId',
                                                             rp && rp.sample.length);
-                                                        /* By now DOMContentLoaded has fired and app.js has
-                                                           booted, so parse AND runtime errors are visible. */
-                                                        ok('every script parsed and booted without errors',
-                                                            window.__SCRIPT_ERRORS.length === 0, window.__SCRIPT_ERRORS.join(' | '));
-                                                        ok('the UI module exposed its API', !!(window.LOGSCOPE && window.LOGSCOPE.report));
-                                                        render();
+
+                                                        /* Exact vs prefix IP semantics: 203.0.113.5 must not
+                                                           catch 203.0.113.55; a dotted prefix catches both. */
+                                                        LS_SPLIT.splitUal(devFile, { ip: '203.0.113.5' }, {
+                                                            progress: function () { },
+                                                            error: function (m) { ok('split: exact ip filter runs', false, m); render(); },
+                                                            done: function (tE, sE) {
+                                                                ok('split: a complete IP matches exactly, not as substring', sE.matched === 2, sE.matched);
+                                                                LS_SPLIT.splitUal(devFile, { ip: '203.0.113.' }, {
+                                                                    progress: function () { },
+                                                                    error: function (m) { ok('split: prefix ip filter runs', false, m); render(); },
+                                                                    done: function (tX, sX) {
+                                                                        ok('split: a dotted prefix matches the family', sX.matched === 3, sX.matched);
+                                                                        const noAdFile = new File(['Time,User,Action\r\n2026-07-29T08:00:00Z,kim@contoso.com,Login\r\n'], 'other.csv', { type: 'text/csv' });
+                                                                        LS_SPLIT.splitUal(noAdFile, {}, {
+                                                                            progress: function () { },
+                                                                            error: function (m) { ok('split: non-UAL file runs', false, m); render(); },
+                                                                            done: function (tN, sN) {
+                                                                                ok('split: a file without AuditData is flagged', sN.noAuditData === true && sN.unparsed === 1,
+                                                                                    sN.noAuditData + '/' + sN.unparsed);
+                                                                                /* By now DOMContentLoaded has fired and app.js has
+                                                                                   booted, so parse AND runtime errors are visible. */
+                                                                                ok('every script parsed and booted without errors',
+                                                                                    window.__SCRIPT_ERRORS.length === 0, window.__SCRIPT_ERRORS.join(' | '));
+                                                                                ok('the UI module exposed its API', !!(window.LOGSCOPE && window.LOGSCOPE.report));
+                                                                                render();
+                                                                            },
+                                                                        });
+                                                                    },
+                                                                });
+                                                            },
+                                                        });
                                                     },
                                                 });
                                             },
