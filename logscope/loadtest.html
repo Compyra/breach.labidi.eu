@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Logscope splitter load test</title>
+    <!--
+      Dev-only harness. Fetches a large export from the local server, turns it
+      into a File, and runs the real splitter against it so the streaming path
+      is exercised at production size. Not linked and not in the SW shell.
+    -->
+    <style>
+        body {
+            font: 14px ui-monospace, monospace;
+            padding: 1.5rem;
+            background: #0a0c12;
+            color: #e8e3d8;
+        }
+
+        .pass {
+            color: #5fd39b;
+        }
+
+        .fail {
+            color: #ff6b6b;
+            font-weight: 700;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Splitter load test</h1>
+    <p id="summary">running...</p>
+    <ul id="out"></ul>
+
+    <script src="../core.js"></script>
+    <script src="split.js"></script>
+    <script>
+        (function () {
+            'use strict';
+            const out = document.getElementById('out');
+            const sum = document.getElementById('summary');
+            const log = (msg, cls) => {
+                const li = document.createElement('li');
+                if (cls) li.className = cls;
+                li.textContent = msg;
+                out.appendChild(li);
+            };
+            const url = new URLSearchParams(location.search).get('file') || 'big-ual.csv';
+            const t0 = performance.now();
+
+            fetch(url).then(r => {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.blob();
+            }).then(blob => {
+                const file = new File([blob], 'big-ual.csv', { type: 'text/csv' });
+                log('file: ' + (file.size / 1024 / 1024).toFixed(1) + ' MB');
+                const mem0 = performance.memory ? performance.memory.usedJSHeapSize : 0;
+
+                LS_SPLIT.splitUal(file, {}, {
+                    progress() { },
+                    error(m) { sum.textContent = 'ERROR: ' + m; sum.className = 'fail'; },
+                    done(tables, stats) {
+                        const secs = ((performance.now() - t0) / 1000).toFixed(1);
+                        const mem1 = performance.memory ? performance.memory.usedJSHeapSize : 0;
+                        log('rows read: ' + stats.rows);
+                        log('records written: ' + stats.matched);
+                        log('unparsed rows: ' + stats.unparsed);
+                        log('columns: ' + stats.columns);
+                        log('distinct IPs: ' + stats.ips);
+                        log('accounts: ' + stats.userCount);
+                        log('window: ' + stats.first + ' to ' + stats.last);
+                        tables.forEach(t => log('table ' + t.filename + ': ' + t.rows +
+                            ' rows, ' + (t.blob.size / 1024 / 1024).toFixed(1) + ' MB'));
+                        log('elapsed: ' + secs + ' s');
+                        if (mem0) log('heap growth: ' + ((mem1 - mem0) / 1024 / 1024).toFixed(1) + ' MB');
+
+                        const okRows = stats.rows === 66000 && stats.matched === 66000;
+                        const okIps = stats.ips === 70;
+                        log(okRows ? 'PASS every row survived the stream' : 'FAIL row count', okRows ? 'pass' : 'fail');
+                        log(okIps ? 'PASS IP set is exactly the seeded 70' : 'FAIL IP count ' + stats.ips, okIps ? 'pass' : 'fail');
+
+                        /* and once more, filtered to a single address */
+                        LS_SPLIT.splitUal(file, { ip: '203.0.113.9' }, {
+                            progress() { },
+                            error(m) { log('filter error ' + m, 'fail'); },
+                            done(t2, s2) {
+                                log('filtered to 203.0.113.9: ' + s2.matched + ' records');
+                                const okF = s2.matched > 0 && s2.matched < stats.rows;
+                                log(okF ? 'PASS IP filter narrows the export' : 'FAIL filter', okF ? 'pass' : 'fail');
+                                const bad = out.querySelectorAll('.fail').length;
+                                sum.textContent = bad ? bad + ' FAILURES' : 'ALL CHECKS PASSED';
+                                sum.className = bad ? 'fail' : 'pass';
+                            },
+                        });
+                    },
+                });
+            }).catch(e => {
+                sum.textContent = 'ERROR: ' + e.message;
+                sum.className = 'fail';
+            });
+        })();
+    </script>
+</body>
+
+</html>

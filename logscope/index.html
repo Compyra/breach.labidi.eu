@@ -2,77 +2,78 @@
 <html lang="en" data-aud="pro">
 
 <head>
- <meta charset="UTF-8">
- <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
- <title>Logscope · read your Entra and Purview logs offline</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Logscope · read your Entra and Purview logs offline</title>
 
- <meta name="description"
- content="Logscope: drop in exported Microsoft Entra sign-in logs, Entra audit logs, Purview Unified Audit Log or Exchange message trace and get a timeline, pivots and prioritised findings. Runs entirely in your browser; nothing is uploaded.">
- <meta name="theme-color" content="#070a10">
- <meta name="color-scheme" content="dark">
- <meta name="robots" content="index, follow">
- <link rel="canonical" href="https://breach.labidi.eu/logscope/">
+    <meta name="description"
+        content="Logscope: drop in exported Microsoft Entra sign-in logs, Entra audit logs, Purview Unified Audit Log or Exchange message trace and get a timeline, pivots and prioritised findings. Runs entirely in your browser; nothing is uploaded.">
+    <meta name="theme-color" content="#070a10">
+    <meta name="color-scheme" content="dark">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://breach.labidi.eu/logscope/">
 
- <!--
- OFFLINE POLICY: stricter here than anywhere else on the site.
- This page handles real incident evidence. It has no server, makes no
- network requests, and loads nothing from outside this folder and its
- parent. If you are reviewing this file and see a URL to anywhere, that
- is a bug and a serious one.
- -->
- <link rel="stylesheet" href="../style.css">
- <link rel="stylesheet" href="logscope.css">
- <link rel="icon"
- href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23070a10'/%3E%3Ccircle cx='27' cy='27' r='14' fill='none' stroke='%2356d3ff' stroke-width='4'/%3E%3Cpath d='M37 37 L52 52' stroke='%2356d3ff' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
+    <!--
+      OFFLINE POLICY: stricter here than anywhere else on the site.
+      This page handles real incident evidence. It has no server, makes no
+      network requests, and loads nothing from outside this folder and its
+      parent. If you are reviewing this file and see a URL to anywhere, that
+      is a bug and a serious one.
+    -->
+    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="logscope.css">
+    <link rel="icon"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23070a10'/%3E%3Ccircle cx='27' cy='27' r='14' fill='none' stroke='%2356d3ff' stroke-width='4'/%3E%3Cpath d='M37 37 L52 52' stroke='%2356d3ff' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
 </head>
 
 <body class="logscope">
- <a class="skip" href="#out">Skip to the tool</a>
+    <a class="skip" href="#out">Skip to the tool</a>
 
- <header class="hdr">
- <div class="hdr-row">
- <a class="brand" href="../" aria-label="Back to Breachlight">
- <span class="brand-mark" aria-hidden="true">
- <svg viewBox="0 0 64 64" width="30" height="30">
- <circle cx="27" cy="27" r="14" fill="none" stroke="currentColor" stroke-width="4" />
- <path d="M37 37 L52 52" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
- </svg>
- </span>
- <span class="brand-text">
- <b>Logscope</b>
- <small>read your own logs, offline</small>
- </span>
- </a>
+    <header class="hdr">
+        <div class="hdr-row">
+            <a class="brand" href="../" aria-label="Back to Breachlight">
+                <span class="brand-mark" aria-hidden="true">
+                    <svg viewBox="0 0 64 64" width="30" height="30">
+                        <circle cx="27" cy="27" r="14" fill="none" stroke="currentColor" stroke-width="4" />
+                        <path d="M37 37 L52 52" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
+                    </svg>
+                </span>
+                <span class="brand-text">
+                    <b>Logscope</b>
+                    <small>read your own logs, offline</small>
+                </span>
+            </a>
 
- <p class="hdr-note">
- <span aria-hidden="true">🔒</span>
- No upload. No server. No network calls. Everything happens in this browser.
- </p>
+            <p class="hdr-note">
+                <span aria-hidden="true">🔒</span>
+                No upload. No server. No network calls. Everything happens in this browser.
+            </p>
 
- <div class="hdr-tools">
- <a class="btn ghost" href="../">← Breachlight</a>
- </div>
- </div>
- </header>
+            <div class="hdr-tools">
+                <a class="btn ghost" href="../">← Breachlight</a>
+            </div>
+        </div>
+    </header>
 
- <div class="shell">
- <main id="out" tabindex="-1"></main>
- </div>
+    <div class="shell">
+        <main id="out" tabindex="-1"></main>
+    </div>
 
- <footer class="ftr">
- <p>Logscope is a <b>triage aid</b>, not an authority. It matches patterns without knowing your VPN ranges,
- your service accounts or your change tickets. Read the evidence it points at; do not trust the label.</p>
- <p class="muted">Part of <a href="../">Breachlight</a> · breach.labidi.eu. Detection meanings and actions come from
- the same catalogue the main site uses, so the two can never disagree.</p>
- </footer>
+    <footer class="ftr">
+        <p>Logscope is a <b>triage aid</b>, not an authority. It matches patterns without knowing your VPN ranges,
+            your service accounts or your change tickets. Read the evidence it points at; do not trust the label.</p>
+        <p class="muted">Part of <a href="../">Breachlight</a> · breach.labidi.eu. Detection meanings and actions come from
+            the same catalogue the main site uses, so the two can never disagree.</p>
+    </footer>
 
- <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
- <script src="../core.js"></script>
- <script src="../data-logs.js"></script>
- <script src="parse.js"></script>
- <script src="rules.js"></script>
- <script src="app.js"></script>
+    <script src="../core.js"></script>
+    <script src="../data-logs.js"></script>
+    <script src="parse.js"></script>
+    <script src="split.js"></script>
+    <script src="rules.js"></script>
+    <script src="app.js"></script>
 </body>
 
 </html>

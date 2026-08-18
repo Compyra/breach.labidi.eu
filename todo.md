@@ -14,12 +14,19 @@ load after them and before `pages.js`. If you add another data file, add it to
 `index.html`, `audit.html` **and** the `SHELL` list in `sw.js`, and bump the
 cache `VERSION`.
 
+**Logscope** (`logscope/`): `split.js` turns an oversized Purview export
+into joinable CSV tables by streaming it off disk, so file size is not a limit
+and the AuditData JSON becomes real columns. The analyser itself still holds
+rows in memory and stops at 80 MB.
+
 **Logscope** (`logscope/`): `../core.js` + `../data-logs.js` → `parse.js`
 (format detection and normalisation) → `rules.js` (detections) → `app.js` (UI).
 
 **Dev harnesses**, not linked from the site and not in the SW shell:
 `audit.html` (structure + search), `overflow.html` (layout at any width),
-`logscope/selftest.html` (parser and rules), plus `logscope/run-selftest.ps1`
+`logscope/selftest.html` (parser, rules and the table splitter),
+`logscope/loadtest.html` (the splitter against a real-size export, needs a CSV
+placed next to it and served locally), plus `logscope/run-selftest.ps1`
 and `logscope/shots.ps1`.
 
 ## Contracts (do not break these)
@@ -57,7 +64,7 @@ headlessly and is the preferred route.
  Baseline: 7 trees / 153 nodes / 61 plays / 153 terms / 29 defences /
  32 audit ops / 8 log sources / 38 symptoms.
 3. Logscope parser and rules:
- `powershell -File logscope/run-selftest.ps1` → expect `44 / 44 passed`.
+ `powershell -File logscope/run-selftest.ps1` → expect `75 / 75 passed`.
 4. Layout at any width:
  `powershell -File logscope/run-selftest.ps1 -Url "http://.../overflow.html?w=320"`
  Tested clean at 320 / 345 / 360 / 390 / 414 across 29 routes.

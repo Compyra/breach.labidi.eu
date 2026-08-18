@@ -2,228 +2,355 @@
 <html lang="en">
 
 <head>
- <meta charset="UTF-8">
- <meta name="viewport" content="width=device-width, initial-scale=1.0">
- <title>Logscope self-test</title>
- <!--
- Dev-only harness. Feeds synthetic exports of every supported format
- through parse.js and rules.js and asserts the results, so the tool can be
- verified without needing real tenant evidence.
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logscope self-test</title>
+    <!--
+      Dev-only harness. Feeds synthetic exports of every supported format
+      through parse.js and rules.js and asserts the results, so the tool can be
+      verified without needing real tenant evidence.
 
- Not linked from anywhere and not in the service worker shell.
- Open /logscope/selftest.html and read the page.
- -->
- <link rel="stylesheet" href="../style.css">
- <style>
- body {
- padding: 1.5rem;
- }
+      Not linked from anywhere and not in the service worker shell.
+      Open /logscope/selftest.html and read the page.
+    -->
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        body {
+            padding: 1.5rem;
+        }
 
- .pass {
- color: #5fd39b;
- }
+        .pass {
+            color: #5fd39b;
+        }
 
- .fail {
- color: #ff6b6b;
- font-weight: 700;
- }
+        .fail {
+            color: #ff6b6b;
+            font-weight: 700;
+        }
 
- li {
- font-family: ui-monospace, monospace;
- font-size: .85rem;
- margin: .2rem 0;
- }
- </style>
+        li {
+            font-family: ui-monospace, monospace;
+            font-size: .85rem;
+            margin: .2rem 0;
+        }
+    </style>
 </head>
 
 <body>
- <h1>Logscope self-test</h1>
- <p id="summary" class="lede">running…</p>
- <ul id="results"></ul>
- <div id="toast" class="toast"></div>
+    <h1>Logscope self-test</h1>
+    <p id="summary" class="lede">running…</p>
+    <ul id="results"></ul>
+    <div id="toast" class="toast"></div>
 
- <script src="../core.js"></script>
- <script src="../data-logs.js"></script>
- <script src="parse.js"></script>
- <script src="rules.js"></script>
- <script>
- (function () {
- 'use strict';
- const results = [];
- const ok = (name, cond, extra) => results.push({ name, cond: !!cond, extra: extra || '' });
+    <script src="../core.js"></script>
+    <script src="../data-logs.js"></script>
+    <script src="parse.js"></script>
+    <script src="split.js"></script>
+    <script src="rules.js"></script>
+    <script>
+        (function () {
+            'use strict';
+            const results = [];
+            const ok = (name, cond, extra) => results.push({ name, cond: !!cond, extra: extra || '' });
 
- /* ---------------- fixtures ---------------- */
+            /* ---------------- fixtures ---------------- */
 
- const signinJson = JSON.stringify([
- {
- createdDateTime: '2026-07-28T09:14:02Z', userPrincipalName: 'jo@contoso.com',
- ipAddress: '203.0.113.9', location: { countryOrRegion: 'NL' },
- appDisplayName: 'Microsoft Office', resourceDisplayName: 'Microsoft Graph',
- authenticationProtocol: 'deviceCode', conditionalAccessStatus: 'notApplied',
- status: { errorCode: 0 }, isInteractive: true, userAgent: 'python-requests/2.31',
- authenticationDetails: [{ authenticationMethod: 'Password', succeeded: true }],
- riskLevelDuringSignIn: 'none', deviceDetail: {}, userType: 'Member'
- },
- {
- createdDateTime: '2026-07-28T09:31:44Z', userPrincipalName: 'jo@contoso.com',
- ipAddress: '198.51.100.7', location: { countryOrRegion: 'SG' },
- appDisplayName: 'Office 365 Exchange Online', status: { errorCode: 0 },
- isInteractive: false, conditionalAccessStatus: 'success',
- authenticationDetails: [{ authenticationStepResultDetail: 'MFA requirement satisfied by claim in the token, previously satisfied' }],
- riskLevelDuringSignIn: 'high', deviceDetail: {}, userType: 'Member'
- },
- {
- createdDateTime: '2026-07-28T08:00:00Z', userPrincipalName: 'ann@contoso.com',
- ipAddress: '198.51.100.7', location: { countryOrRegion: 'BR' },
- appDisplayName: 'Exchange ActiveSync', clientAppUsed: 'Exchange ActiveSync',
- status: { errorCode: 0 }, isInteractive: true, deviceDetail: {}, userType: 'Guest'
- }
- ]);
+            const signinJson = JSON.stringify([
+                {
+                    createdDateTime: '2026-07-28T09:14:02Z', userPrincipalName: 'jo@contoso.com',
+                    ipAddress: '203.0.113.9', location: { countryOrRegion: 'NL' },
+                    appDisplayName: 'Microsoft Office', resourceDisplayName: 'Microsoft Graph',
+                    authenticationProtocol: 'deviceCode', conditionalAccessStatus: 'notApplied',
+                    status: { errorCode: 0 }, isInteractive: true, userAgent: 'python-requests/2.31',
+                    authenticationDetails: [{ authenticationMethod: 'Password', succeeded: true }],
+                    riskLevelDuringSignIn: 'none', deviceDetail: {}, userType: 'Member'
+                },
+                {
+                    createdDateTime: '2026-07-28T09:31:44Z', userPrincipalName: 'jo@contoso.com',
+                    ipAddress: '198.51.100.7', location: { countryOrRegion: 'SG' },
+                    appDisplayName: 'Office 365 Exchange Online', status: { errorCode: 0 },
+                    isInteractive: false, conditionalAccessStatus: 'success',
+                    authenticationDetails: [{ authenticationStepResultDetail: 'MFA requirement satisfied by claim in the token, previously satisfied' }],
+                    riskLevelDuringSignIn: 'high', deviceDetail: {}, userType: 'Member'
+                },
+                {
+                    createdDateTime: '2026-07-28T08:00:00Z', userPrincipalName: 'ann@contoso.com',
+                    ipAddress: '198.51.100.7', location: { countryOrRegion: 'BR' },
+                    appDisplayName: 'Exchange ActiveSync', clientAppUsed: 'Exchange ActiveSync',
+                    status: { errorCode: 0 }, isInteractive: true, deviceDetail: {}, userType: 'Guest'
+                }
+            ]);
 
- const auditJson = JSON.stringify({
- value: [
- {
- activityDateTime: '2026-07-28T09:40:10Z', activityDisplayName: 'Add service principal',
- category: 'ApplicationManagement', result: 'success',
- initiatedBy: { user: { userPrincipalName: 'jo@contoso.com', ipAddress: '198.51.100.7' } },
- targetResources: [{ displayName: 'Mail Backup Pro', type: 'ServicePrincipal', modifiedProperties: [] }]
- },
- {
- activityDateTime: '2026-07-28T09:41:02Z',
- activityDisplayName: 'Add service principal credentials', result: 'success',
- initiatedBy: { user: { userPrincipalName: 'jo@contoso.com', ipAddress: '198.51.100.7' } },
- targetResources: [{ displayName: 'Mail Backup Pro', modifiedProperties: [{ displayName: 'KeyDescription', oldValue: '[]', newValue: '["expires 2099"]' }] }]
- },
- {
- activityDateTime: '2026-07-28T10:02:00Z', activityDisplayName: 'Set domain authentication',
- result: 'success', initiatedBy: { user: { userPrincipalName: 'adm@contoso.com', ipAddress: '198.51.100.7' } },
- targetResources: [{ displayName: 'contoso.com' }]
- },
- {
- activityDateTime: '2026-07-28T11:00:00Z', activityDisplayName: 'Admin registered security info',
- result: 'success', initiatedBy: { user: { userPrincipalName: 'help@contoso.com', ipAddress: '10.1.1.5' } },
- targetResources: [{ userPrincipalName: 'cfo@contoso.com' }]
- }
- ]
- });
+            const auditJson = JSON.stringify({
+                value: [
+                    {
+                        activityDateTime: '2026-07-28T09:40:10Z', activityDisplayName: 'Add service principal',
+                        category: 'ApplicationManagement', result: 'success',
+                        initiatedBy: { user: { userPrincipalName: 'jo@contoso.com', ipAddress: '198.51.100.7' } },
+                        targetResources: [{ displayName: 'Mail Backup Pro', type: 'ServicePrincipal', modifiedProperties: [] }]
+                    },
+                    {
+                        activityDateTime: '2026-07-28T09:41:02Z',
+                        activityDisplayName: 'Add service principal credentials', result: 'success',
+                        initiatedBy: { user: { userPrincipalName: 'jo@contoso.com', ipAddress: '198.51.100.7' } },
+                        targetResources: [{ displayName: 'Mail Backup Pro', modifiedProperties: [{ displayName: 'KeyDescription', oldValue: '[]', newValue: '["expires 2099"]' }] }]
+                    },
+                    {
+                        activityDateTime: '2026-07-28T10:02:00Z', activityDisplayName: 'Set domain authentication',
+                        result: 'success', initiatedBy: { user: { userPrincipalName: 'adm@contoso.com', ipAddress: '198.51.100.7' } },
+                        targetResources: [{ displayName: 'contoso.com' }]
+                    },
+                    {
+                        activityDateTime: '2026-07-28T11:00:00Z', activityDisplayName: 'Admin registered security info',
+                        result: 'success', initiatedBy: { user: { userPrincipalName: 'help@contoso.com', ipAddress: '10.1.1.5' } },
+                        targetResources: [{ userPrincipalName: 'cfo@contoso.com' }]
+                    }
+                ]
+            });
 
- /* Purview CSV with a quoted AuditData JSON column containing commas
- and escaped quotes: the case a naive split destroys. */
- const ualCsv = 'CreationDate,UserIds,Operations,AuditData\r\n' +
- '2026-07-28T09:45:00Z,jo@contoso.com,New-InboxRule,' +
- '"{""CreationTime"":""2026-07-28T09:45:00"",""Operation"":""New-InboxRule"",""ClientIP"":""198.51.100.7"",""UserId"":""jo@contoso.com"",""Workload"":""Exchange"",""Parameters"":[{""Name"":""Name"",""Value"":"".""},{""Name"":""MoveToFolder"",""Value"":""RSS Feeds""},{""Name"":""SubjectContainsWords"",""Value"":""invoice, payment""}]}"\r\n' +
- '2026-07-28T09:50:00Z,jo@contoso.com,MailItemsAccessed,' +
- '"{""CreationTime"":""2026-07-28T09:50:00"",""Operation"":""MailItemsAccessed"",""ClientIP"":""198.51.100.7"",""UserId"":""jo@contoso.com"",""MailAccessType"":""Sync"",""Folders"":[{""Path"":""\\\\Inbox"",""FolderItems"":[{""InternetMessageId"":""<a@b>""}]}]}"\r\n';
+            /* Purview CSV with a quoted AuditData JSON column containing commas
+               and escaped quotes: the case a naive split destroys. */
+            const ualCsv = 'CreationDate,UserIds,Operations,AuditData\r\n' +
+                '2026-07-28T09:45:00Z,jo@contoso.com,New-InboxRule,' +
+                '"{""CreationTime"":""2026-07-28T09:45:00"",""Operation"":""New-InboxRule"",""ClientIP"":""198.51.100.7"",""UserId"":""jo@contoso.com"",""Workload"":""Exchange"",""Parameters"":[{""Name"":""Name"",""Value"":"".""},{""Name"":""MoveToFolder"",""Value"":""RSS Feeds""},{""Name"":""SubjectContainsWords"",""Value"":""invoice, payment""}]}"\r\n' +
+                '2026-07-28T09:50:00Z,jo@contoso.com,MailItemsAccessed,' +
+                '"{""CreationTime"":""2026-07-28T09:50:00"",""Operation"":""MailItemsAccessed"",""ClientIP"":""198.51.100.7"",""UserId"":""jo@contoso.com"",""MailAccessType"":""Sync"",""Folders"":[{""Path"":""\\\\Inbox"",""FolderItems"":[{""InternetMessageId"":""<a@b>""}]}]}"\r\n';
 
- const traceCsv = 'date_time,sender_address,recipient_address,subject,status,from_ip\r\n' +
- Array.from({ length: 30 }, (_, i) =>
- `2026-07-28T10:0${i % 10}:00Z,jo@contoso.com,victim${i}@partner.com,"Invoice, updated",Delivered,198.51.100.7`).join('\r\n') + '\r\n';
+            const traceCsv = 'date_time,sender_address,recipient_address,subject,status,from_ip\r\n' +
+                Array.from({ length: 30 }, (_, i) =>
+                `2026-07-28T10:0${i % 10}:00Z,jo@contoso.com,victim${i}@partner.com,"Invoice, updated",Delivered,198.51.100.7`).join('\r\n') + '\r\n';
 
- const signinCsv = '"Date (UTC)","Username","Application","IP address","Location","Status","Sign-in error code","Client app","Authentication Protocol","Conditional Access","Multifactor authentication result"\r\n' +
- '"2026-07-28T12:00:00Z","bob@contoso.com","Azure Portal","203.0.113.44","US","Success","0","Browser","","Success","MFA requirement satisfied by claim in the token"\r\n' +
- '"2026-07-28T13:00:00Z","eve@contoso.com","Microsoft Office","203.0.113.80","FR","Failure","50199","Browser","","",""\r\n' +
- '"2026-07-28T13:07:00Z","eve@contoso.com","Microsoft Office","198.51.100.99","FR","Success","0","Browser","","Success",""\r\n';
+            const signinCsv = '"Date (UTC)","Username","Application","IP address","Location","Status","Sign-in error code","Client app","Authentication Protocol","Conditional Access","Multifactor authentication result"\r\n' +
+                '"2026-07-28T12:00:00Z","bob@contoso.com","Azure Portal","203.0.113.44","US","Success","0","Browser","","Success","MFA requirement satisfied by claim in the token"\r\n' +
+                '"2026-07-28T13:00:00Z","eve@contoso.com","Microsoft Office","203.0.113.80","FR","Failure","50199","Browser","","",""\r\n' +
+                '"2026-07-28T13:07:00Z","eve@contoso.com","Microsoft Office","198.51.100.99","FR","Success","0","Browser","","Success",""\r\n';
 
- /* ---------------- format detection ---------------- */
+            /* ---------------- format detection ---------------- */
 
- const rSignin = LS_PARSE.parseText(signinJson, 'signins.json');
- ok('sign-in JSON detected', rSignin.kind === 'signin', rSignin.kind);
- ok('sign-in JSON row count', rSignin.events.length === 3, rSignin.events.length);
- ok('device code protocol parsed', rSignin.events[0].proto === 'deviceCode', rSignin.events[0].proto);
- ok('prior-claim MFA detected', rSignin.events.some(e => e.mfa === 'prior'));
+            const rSignin = LS_PARSE.parseText(signinJson, 'signins.json');
+            ok('sign-in JSON detected', rSignin.kind === 'signin', rSignin.kind);
+            ok('sign-in JSON row count', rSignin.events.length === 3, rSignin.events.length);
+            ok('device code protocol parsed', rSignin.events[0].proto === 'deviceCode', rSignin.events[0].proto);
+            ok('prior-claim MFA detected', rSignin.events.some(e => e.mfa === 'prior'));
 
- const rAudit = LS_PARSE.parseText(auditJson, 'audit.json');
- ok('audit JSON detected (value wrapper)', rAudit.kind === 'audit', rAudit.kind);
- ok('audit rows', rAudit.events.length === 4, rAudit.events.length);
- ok('audit modifiedProperties captured', (rAudit.events[1].extra.mods || []).length === 1);
+            const rAudit = LS_PARSE.parseText(auditJson, 'audit.json');
+            ok('audit JSON detected (value wrapper)', rAudit.kind === 'audit', rAudit.kind);
+            ok('audit rows', rAudit.events.length === 4, rAudit.events.length);
+            ok('audit modifiedProperties captured', (rAudit.events[1].extra.mods || []).length === 1);
 
- const rUal = LS_PARSE.parseText(ualCsv, 'ual.csv');
- ok('UAL CSV detected', rUal.kind === 'ual', rUal.kind);
- ok('UAL rows', rUal.events.length === 2, rUal.events.length);
- ok('AuditData unpacked: ClientIP', rUal.events[0].actorIp === '198.51.100.7', rUal.events[0].actorIp);
- ok('AuditData unpacked: parameters with embedded comma',
- (rUal.events[0].extra.params.SubjectContainsWords || '') === 'invoice, payment',
- rUal.events[0].extra.params.SubjectContainsWords);
- ok('MailItemsAccessed Sync captured', rUal.events[1].extra.mailAccessType === 'Sync');
+            const rUal = LS_PARSE.parseText(ualCsv, 'ual.csv');
+            ok('UAL CSV detected', rUal.kind === 'ual', rUal.kind);
+            ok('UAL rows', rUal.events.length === 2, rUal.events.length);
+            ok('AuditData unpacked: ClientIP', rUal.events[0].actorIp === '198.51.100.7', rUal.events[0].actorIp);
+            ok('AuditData unpacked: parameters with embedded comma',
+                (rUal.events[0].extra.params.SubjectContainsWords || '') === 'invoice, payment',
+                rUal.events[0].extra.params.SubjectContainsWords);
+            ok('MailItemsAccessed Sync captured', rUal.events[1].extra.mailAccessType === 'Sync');
 
- const rTrace = LS_PARSE.parseText(traceCsv, 'trace.csv');
- ok('message trace detected', rTrace.kind === 'trace', rTrace.kind);
- ok('trace rows', rTrace.events.length === 30, rTrace.events.length);
+            const rTrace = LS_PARSE.parseText(traceCsv, 'trace.csv');
+            ok('message trace detected', rTrace.kind === 'trace', rTrace.kind);
+            ok('trace rows', rTrace.events.length === 30, rTrace.events.length);
 
- const rSigninCsv = LS_PARSE.parseText(signinCsv, 'signins.csv');
- ok('sign-in CSV detected', rSigninCsv.kind === 'signin', rSigninCsv.kind);
- ok('sign-in CSV prior claim', rSigninCsv.events[0].mfa === 'prior', rSigninCsv.events[0].mfa);
- ok('sign-in CSV error code kept', rSigninCsv.events[1].result === 'failure 50199', rSigninCsv.events[1].result);
+            const rSigninCsv = LS_PARSE.parseText(signinCsv, 'signins.csv');
+            ok('sign-in CSV detected', rSigninCsv.kind === 'signin', rSigninCsv.kind);
+            ok('sign-in CSV prior claim', rSigninCsv.events[0].mfa === 'prior', rSigninCsv.events[0].mfa);
+            ok('sign-in CSV error code kept', rSigninCsv.events[1].result === 'failure 50199', rSigninCsv.events[1].result);
 
- ok('garbage does not throw', (function () {
- try { LS_PARSE.parseText('%%%not a log%%%', 'x.txt'); return true; } catch (e) { return false; }
- })());
- ok('empty handled', LS_PARSE.parseText('', 'e.txt').kind === 'empty');
+            ok('garbage does not throw', (function () {
+                try { LS_PARSE.parseText('%%%not a log%%%', 'x.txt'); return true; } catch (e) { return false; }
+            })());
+            ok('empty handled', LS_PARSE.parseText('', 'e.txt').kind === 'empty');
 
- /* ---------------- rules ---------------- */
+            /* ---------------- rules ---------------- */
 
- const all = [].concat(rSignin.events, rAudit.events, rUal.events, rTrace.events, rSigninCsv.events).sort((a, b) => (a.ts ? a.ts.getTime(): 0) - (b.ts ? b.ts.getTime(): 0));
- const findings = LS_RULES.run(all);
- const has = id => findings.some(f => f.id === id);
+            const all = [].concat(rSignin.events, rAudit.events, rUal.events, rTrace.events, rSigninCsv.events).sort((a, b) => (a.ts ? a.ts.getTime(): 0) - (b.ts ? b.ts.getTime(): 0));
+            const findings = LS_RULES.run(all);
+            const has = id => findings.some(f => f.id === id);
 
- ok('rule: device code', has('device-code'));
- ok('rule: token prior claim', has('token-prior-claim'));
- ok('rule: legacy auth', has('legacy-auth'));
- ok('rule: CA not applied', has('ca-not-applied'));
- ok('rule: risky sign-in', has('risky-signin'));
- ok('rule: guest sign-in', has('guest-signin'));
- ok('rule: outbound burst', has('outbound-burst'));
- ok('rule: sign-in then persistence chain', has('chain'));
- ok('rule: 50199 interrupt then success', has('interrupt-then-success'));
- ok('rule: fast travel pairs countries', (function () {
- const f = findings.filter(x => x.id === 'fast-travel')[0];
- return f && f.groups.some(g => /NL then SG|SG then NL/.test(g.detail));
- })());
+            ok('rule: device code', has('device-code'));
+            ok('rule: token prior claim', has('token-prior-claim'));
+            ok('rule: legacy auth', has('legacy-auth'));
+            ok('rule: CA not applied', has('ca-not-applied'));
+            ok('rule: risky sign-in', has('risky-signin'));
+            ok('rule: guest sign-in', has('guest-signin'));
+            ok('rule: outbound burst', has('outbound-burst'));
+            ok('rule: sign-in then persistence chain', has('chain'));
+            ok('rule: 50199 interrupt then success', has('interrupt-then-success'));
+            ok('rule: fast travel pairs countries', (function () {
+                const f = findings.filter(x => x.id === 'fast-travel')[0];
+                return f && f.groups.some(g => /NL then SG|SG then NL/.test(g.detail));
+            })());
 
- ok('catalogue: Add service principal', has('op:Add service principal'));
- ok('catalogue: credentials added', has('op:Add service principal credentials'));
- ok('catalogue: federation change', has('op:Set domain authentication'));
- ok('catalogue: inbox rule', has('op:New-InboxRule'));
- ok('catalogue: MailItemsAccessed', has('op:MailItemsAccessed'));
- ok('catalogue: helpdesk reset', has('op:Admin registered security info'));
+            ok('catalogue: Add service principal', has('op:Add service principal'));
+            ok('catalogue: credentials added', has('op:Add service principal credentials'));
+            ok('catalogue: federation change', has('op:Set domain authentication'));
+            ok('catalogue: inbox rule', has('op:New-InboxRule'));
+            ok('catalogue: MailItemsAccessed', has('op:MailItemsAccessed'));
+            ok('catalogue: helpdesk reset', has('op:Admin registered security info'));
 
- ok('severities ordered critical first', findings.length && findings[0].sev === 'critical', findings[0] && findings[0].sev);
- ok('every finding has actions', findings.every(f => f.actions && f.actions.length));
- ok('every finding link resolves to a real page path',
- findings.every(f => !f.link || f.link.indexOf('../') === 0));
+            ok('severities ordered critical first', findings.length && findings[0].sev === 'critical', findings[0] && findings[0].sev);
+            ok('every finding has actions', findings.every(f => f.actions && f.actions.length));
+            ok('every finding link resolves to a real page path',
+                findings.every(f => !f.link || f.link.indexOf('../') === 0));
 
- /* catalogue name matching tolerance */
- ok('en-dash operation matches',
- !!LS_RULES.catalogueLookup('Update application – Certificates and secrets management'));
- ok('hyphen variant matches',
- !!LS_RULES.catalogueLookup('Update application - Certificates and secrets management'));
- ok('case/space insensitive', !!LS_RULES.catalogueLookup(' set domain authentication '));
- ok('similar names do not collide',
- LS_RULES.catalogueLookup('Add service principal') !== LS_RULES.catalogueLookup('Add service principal credentials'));
+            /* catalogue name matching tolerance */
+            ok('en-dash operation matches',
+                !!LS_RULES.catalogueLookup('Update application – Certificates and secrets management'));
+            ok('hyphen variant matches',
+                !!LS_RULES.catalogueLookup('Update application - Certificates and secrets management'));
+            ok('case/space insensitive', !!LS_RULES.catalogueLookup(' set domain authentication '));
+            ok('similar names do not collide',
+                LS_RULES.catalogueLookup('Add service principal') !== LS_RULES.catalogueLookup('Add service principal credentials'));
 
- /* coverage */
- const gapsPartial = LS_RULES.coverage(rSignin.events);
- ok('coverage flags missing audit logs', gapsPartial.some(g => /audit logs/i.test(g.text)));
- ok('coverage flags missing purview', gapsPartial.some(g => /purview/i.test(g.text)));
+            /* coverage */
+            const gapsPartial = LS_RULES.coverage(rSignin.events);
+            ok('coverage flags missing audit logs', gapsPartial.some(g => /audit logs/i.test(g.text)));
+            ok('coverage flags missing purview', gapsPartial.some(g => /purview/i.test(g.text)));
 
- /* ---------------- render ---------------- */
+            /* ---------------- table splitter ---------------- */
 
- const list = document.getElementById('results');
- let pass = 0;
- results.forEach(r => {
- if (r.cond) pass++;
- const li = document.createElement('li');
- li.className = r.cond ? 'pass' : 'fail';
- li.textContent = (r.cond ? '✓ ' : '✗ ') + r.name + (r.cond ? '' : ' → got: ' + r.extra);
- list.appendChild(li);
- });
- const s = document.getElementById('summary');
- s.textContent = pass + ' / ' + results.length + ' passed' +
- (pass === results.length ? ', clean.' : ', SEE FAILURES ABOVE.');
- s.className = pass === results.length ? 'lede pass' : 'lede fail';
- window.SELFTEST = { pass: pass, total: results.length, results: results, findings: findings };
- })();
- </script>
+            /* Feed the streaming parser in awkward slices: a quoted field with
+               commas, escaped quotes and a newline, cut at every boundary. */
+            [1, 3, 7, 13, 64].forEach(function (size) {
+                const csv = 'a,b,c\r\n1,"he said ""go, now""\nsecond line",3\r\n4,5,6\r\n';
+                const rows = [];
+                const st = LS_SPLIT.makeCsvStream(function (r) { rows.push(r.slice()); });
+                for (let i = 0; i < csv.length; i += size) st.push(csv.slice(i, i + size));
+                st.end();
+                const good = rows.length === 3 &&
+                    rows[1][1] === 'he said "go, now"\nsecond line' &&
+                    rows[1][2] === '3' && rows[2][0] === '4';
+                ok('stream CSV survives a ' + size + '-char chunk boundary', good,
+                    JSON.stringify(rows).slice(0, 110));
+            });
+
+            ok('stream CSV strips the BOM', (function () {
+                const rows = [];
+                const st = LS_SPLIT.makeCsvStream(function (r) { rows.push(r.slice()); });
+                st.push('\ufeffx,y\r\n1,2\r\n');
+                st.end();
+                return rows[0][0] === 'x';
+            })());
+
+            ok('csv cell quotes and escapes',
+                LS_SPLIT.csvCell('a,b"c') === '"a,b""c"', LS_SPLIT.csvCell('a,b"c'));
+
+            ok('IPv4 port stripped', LS_SPLIT.cleanIp('198.51.100.7:51142') === '198.51.100.7');
+            ok('IPv6 brackets and port stripped',
+                LS_SPLIT.cleanIp('[2001:db8::1]:443') === '2001:db8::1',
+                LS_SPLIT.cleanIp('[2001:db8::1]:443'));
+            ok('impossible octet rejected', LS_SPLIT.validIp('999.1.1.1') === false);
+            ok('a clock time is not an IPv6 address', LS_SPLIT.isIpv6('09:45:00') === false);
+            ok('a real IPv6 address still passes', LS_SPLIT.isIpv6('2001:db8::1') === true);
+            ok('full-form IPv6 passes', LS_SPLIT.isIpv6('2001:0db8:0000:0000:0000:0000:0000:0001') === true);
+            ok('two double-colons rejected', LS_SPLIT.isIpv6('2001::db8::1') === false);
+            ok('trailing lone colon rejected', LS_SPLIT.isIpv6('2001:db8::1:') === false);
+            ok('leading lone colon rejected', LS_SPLIT.isIpv6(':db8:1') === false);
+            ok('bracketed IPv6 with port still resolves',
+                LS_SPLIT.cleanIp('[2001:db8::1]:51142') === '2001:db8::1');
+
+            (function () {
+                const ad = {
+                    Operation: 'MailItemsAccessed',
+                    ClientIP: '198.51.100.7:51142',
+                    UserId: 'jo@contoso.com',
+                    Folders: [{ Path: '\\Inbox', FolderItems: [{ InternetMessageId: '<a@b>' }] }],
+                    Parameters: [{ Name: 'SubjectContainsWords', Value: 'invoice, payment' }],
+                    ExtendedProperties: [{ Name: 'OriginatingServer', Value: 'SRV1 (203.0.113.44)' }],
+                    Session: { DeviceIp: '10.20.30.40' }
+                };
+                const flat = LS_SPLIT.flatten(ad, '', {});
+                ok('flatten nests with dotted paths', flat['Session.DeviceIp'] === '10.20.30.40',
+                    JSON.stringify(flat).slice(0, 110));
+                ok('flatten leaves child arrays to their own tables',
+                    flat['Parameters'] === undefined && flat['Folders'] === undefined);
+                const ips = LS_SPLIT.harvestIps(flat, JSON.stringify(ad));
+                ok('IP harvested from ClientIP', ips.indexOf('198.51.100.7') >= 0, ips.join(','));
+                ok('IP harvested from a nested object', ips.indexOf('10.20.30.40') >= 0, ips.join(','));
+                ok('IP harvested from free text in the JSON', ips.indexOf('203.0.113.44') >= 0, ips.join(','));
+            })();
+
+
+            /* ---------------- end to end, asynchronous ---------------- */
+
+            const splitCsv = (function () {
+                const ad1 = JSON.stringify({
+                    CreationTime: '2026-07-28T09:45:00', Id: 'r1', Operation: 'New-InboxRule',
+                    UserId: 'jo@contoso.com', Workload: 'Exchange', ClientIP: '198.51.100.7',
+                    Parameters: [{ Name: 'Name', Value: '.' }, { Name: 'MoveToFolder', Value: 'RSS Feeds' }]
+                });
+                const ad2 = JSON.stringify({
+                    CreationTime: '2026-07-28T10:00:00', Id: 'r2', Operation: 'MailItemsAccessed',
+                    UserId: 'ann@contoso.com', Workload: 'Exchange', ClientIP: '203.0.113.9',
+                    Folders: [{ Path: '\\Inbox', FolderItems: [{ InternetMessageId: '<m1>' }, { InternetMessageId: '<m2>' }] }]
+                });
+                const q = function (x) { return '"' + x.replace(/"/g, '""') + '"'; };
+                return 'CreationDate,UserIds,Operations,AuditData\r\n' +
+                    '2026-07-28T09:45:00Z,jo@contoso.com,New-InboxRule,' + q(ad1) + '\r\n' +
+                    '2026-07-28T10:00:00Z,ann@contoso.com,MailItemsAccessed,' + q(ad2) + '\r\n';
+            })();
+            const splitFile = new File([splitCsv], 'ual.csv', { type: 'text/csv' });
+
+            function byName(tables) {
+                const m = {};
+                (tables || []).forEach(function (t) { m[t.filename] = t; });
+                return m;
+            }
+
+            LS_SPLIT.splitUal(splitFile, {}, {
+                progress: function () { },
+                error: function (m) { ok('split runs without error', false, m); render(); },
+                done: function (tables, stats) {
+                    const t = byName(tables);
+                    ok('split: both records written', stats.matched === 2, stats.matched);
+                    ok('split: records table produced', !!t['records.csv']);
+                    ok('split: parameters lifted into their own table',
+                        t['parameters.csv'] && t['parameters.csv'].rows === 2,
+                        t['parameters.csv'] && t['parameters.csv'].rows);
+                    ok('split: mail items lifted into their own table',
+                        t['mail-items.csv'] && t['mail-items.csv'].rows === 2,
+                        t['mail-items.csv'] && t['mail-items.csv'].rows);
+                    ok('split: IP summary lists both addresses',
+                        t['ip-summary.csv'] && t['ip-summary.csv'].rows === 2,
+                        t['ip-summary.csv'] && t['ip-summary.csv'].rows);
+                    ok('split: subset keeps the original schema (header + 2)',
+                        t['subset.csv'] && t['subset.csv'].rows === 3,
+                        t['subset.csv'] && t['subset.csv'].rows);
+                    ok('split: empty tables are omitted', !t['modified-properties.csv']);
+
+                    LS_SPLIT.splitUal(splitFile, { ip: '203.0.113.9' }, {
+                        progress: function () { },
+                        error: function (m) { ok('split: IP filter runs', false, m); render(); },
+                        done: function (tables2, stats2) {
+                            ok('split: IP filter keeps only the matching record', stats2.matched === 1, stats2.matched);
+                            ok('split: IP summary still covers the whole file', stats2.ips === 2, stats2.ips);
+                            render();
+                        },
+                    });
+                },
+            });
+
+            /* ---------------- render ---------------- */
+
+            function render() {
+                const list = document.getElementById('results');
+                list.textContent = '';
+            let pass = 0;
+            results.forEach(r => {
+                if (r.cond) pass++;
+                const li = document.createElement('li');
+                li.className = r.cond ? 'pass' : 'fail';
+                li.textContent = (r.cond ? '✓ ' : '✗ ') + r.name + (r.cond ? '' : ' → got: ' + r.extra);
+                list.appendChild(li);
+            });
+            const s = document.getElementById('summary');
+            s.textContent = pass + ' / ' + results.length + ' passed' +
+                (pass === results.length ? ', clean.' : ', SEE FAILURES ABOVE.');
+            s.className = pass === results.length ? 'lede pass' : 'lede fail';
+            window.SELFTEST = { pass: pass, total: results.length, results: results, findings: findings };
+            }
+        })();
+    </script>
 </body>
 
 </html>

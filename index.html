@@ -2,104 +2,104 @@
 <html lang="en" data-aud="user">
 
 <head>
- <meta charset="UTF-8">
- <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
- <title>Breachlight · What to do the moment after you clicked</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Breachlight · What to do the moment after you clicked</title>
 
- <meta name="description"
- content="Breachlight: incident triage for the moment after you clicked. Interactive decision trees for phishing, stolen passwords, missing money, malicious QR codes, hijacked accounts and ransomware, plus a plain-language glossary and a defence bench. Two modes: one for people, one for responders.">
- <meta name="theme-color" content="#0a0c12">
- <meta name="color-scheme" content="dark">
- <meta name="robots" content="index, follow">
- <link rel="canonical" href="https://breach.labidi.eu/">
+    <meta name="description"
+        content="Breachlight: incident triage for the moment after you clicked. Interactive decision trees for phishing, stolen passwords, missing money, malicious QR codes, hijacked accounts and ransomware, plus a plain-language glossary and a defence bench. Two modes: one for people, one for responders.">
+    <meta name="theme-color" content="#0a0c12">
+    <meta name="color-scheme" content="dark">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://breach.labidi.eu/">
 
- <!--
- OFFLINE POLICY
- No fonts, no CDNs, no analytics, no frameworks, no trackers. Every byte
- this page needs is in this folder. A page that tells you not to trust
- strange servers has no business calling any.
- -->
- <link rel="stylesheet" href="style.css">
- <link rel="manifest" href="manifest.webmanifest">
- <link rel="icon"
- href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230a0c12'/%3E%3Cpath d='M32 8 L48 20 v16 c0 10-7 17-16 20-9-3-16-10-16-20V20Z' fill='none' stroke='%23ffb347' stroke-width='3.5' stroke-linejoin='round'/%3E%3Ccircle cx='32' cy='31' r='5' fill='%23ffb347'/%3E%3Cpath d='M32 36v9' stroke='%23ffb347' stroke-width='3.5' stroke-linecap='round'/%3E%3C/svg%3E">
+    <!--
+      OFFLINE POLICY
+      No fonts, no CDNs, no analytics, no frameworks, no trackers. Every byte
+      this page needs is in this folder. A page that tells you not to trust
+      strange servers has no business calling any.
+    -->
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230a0c12'/%3E%3Cpath d='M32 8 L48 20 v16 c0 10-7 17-16 20-9-3-16-10-16-20V20Z' fill='none' stroke='%23ffb347' stroke-width='3.5' stroke-linejoin='round'/%3E%3Ccircle cx='32' cy='31' r='5' fill='%23ffb347'/%3E%3Cpath d='M32 36v9' stroke='%23ffb347' stroke-width='3.5' stroke-linecap='round'/%3E%3C/svg%3E">
 </head>
 
 <body>
- <a class="skip" href="#main">Skip to content</a>
+    <a class="skip" href="#main">Skip to content</a>
 
- <header class="hdr">
- <div class="hdr-row">
- <a class="brand" href="#/" aria-label="Breachlight: home">
- <span class="brand-mark" aria-hidden="true">
- <svg viewBox="0 0 64 64" width="30" height="30">
- <path d="M32 8 L48 20 v16 c0 10-7 17-16 20-9-3-16-10-16-20V20Z" fill="none"
- stroke="currentColor" stroke-width="4" stroke-linejoin="round" />
- <circle cx="32" cy="31" r="5" fill="currentColor" />
- <path d="M32 36v9" stroke="currentColor" stroke-width="4" stroke-linecap="round" />
- </svg>
- </span>
- <span class="brand-text">
- <b>Breachlight</b>
- <small>the moment after you clicked</small>
- </span>
- </a>
+    <header class="hdr">
+        <div class="hdr-row">
+            <a class="brand" href="#/" aria-label="Breachlight: home">
+                <span class="brand-mark" aria-hidden="true">
+                    <svg viewBox="0 0 64 64" width="30" height="30">
+                        <path d="M32 8 L48 20 v16 c0 10-7 17-16 20-9-3-16-10-16-20V20Z" fill="none"
+                            stroke="currentColor" stroke-width="4" stroke-linejoin="round" />
+                        <circle cx="32" cy="31" r="5" fill="currentColor" />
+                        <path d="M32 36v9" stroke="currentColor" stroke-width="4" stroke-linecap="round" />
+                    </svg>
+                </span>
+                <span class="brand-text">
+                    <b>Breachlight</b>
+                    <small>the moment after you clicked</small>
+                </span>
+            </a>
 
- <div class="hdr-search">
- <label class="sr-only" for="q">Search everything</label>
- <input id="q" type="search" autocomplete="off" spellcheck="false" enterkeyhint="search"
- placeholder="Search: I clicked a link, QR, money gone, smishing… (press /)">
- <kbd class="search-kbd" aria-hidden="true">/</kbd>
- </div>
+            <div class="hdr-search">
+                <label class="sr-only" for="q">Search everything</label>
+                <input id="q" type="search" autocomplete="off" spellcheck="false" enterkeyhint="search"
+                    placeholder="Search: I clicked a link, QR, money gone, smishing… (press /)">
+                <kbd class="search-kbd" aria-hidden="true">/</kbd>
+            </div>
 
- <div class="hdr-tools">
- <div class="aud-switch" role="group" aria-label="Who is reading">
- <button type="button" class="aud-btn" data-aud-set="user" aria-pressed="true">
- <span aria-hidden="true">🙂</span> For me
- </button>
- <button type="button" class="aud-btn" data-aud-set="pro" aria-pressed="false">
- <span aria-hidden="true">🛡</span> For responders
- </button>
- </div>
- <button type="button" id="installBtn" class="icon-btn" hidden
- title="Install Breachlight as an app on this device">⤓</button>
- </div>
- </div>
+            <div class="hdr-tools">
+                <div class="aud-switch" role="group" aria-label="Who is reading">
+                    <button type="button" class="aud-btn" data-aud-set="user" aria-pressed="true">
+                        <span aria-hidden="true">🙂</span> For me
+                    </button>
+                    <button type="button" class="aud-btn" data-aud-set="pro" aria-pressed="false">
+                        <span aria-hidden="true">🛡</span> For responders
+                    </button>
+                </div>
+                <button type="button" id="installBtn" class="icon-btn" hidden
+                    title="Install Breachlight as an app on this device">⤓</button>
+            </div>
+        </div>
 
- <nav class="rail" id="rail" aria-label="Sections"></nav>
- </header>
+        <nav class="rail" id="rail" aria-label="Sections"></nav>
+    </header>
 
- <div class="shell">
- <main id="main" tabindex="-1"></main>
- </div>
+    <div class="shell">
+        <main id="main" tabindex="-1"></main>
+    </div>
 
- <footer class="ftr">
- <p class="panic"><b>If money is moving right now</b>, stop reading and phone your bank on the
- number printed on your card. Every other step on this site can wait ten minutes. That one cannot.</p>
- <p>Breachlight is a reference, not a helpline, a lawyer or a forensics firm. Local law, your bank’s
- rules and your employer’s policy always win. If a crime has been committed, report it to the police.</p>
- <p class="muted">Static, offline-capable, no tracking, no network calls, nothing you type ever
- leaves this device. <span id="verLine"></span>
- <a class="ftr-link"
- href="mailto:breachlight@labidi.eu?subject=Breachlight%20feedback">Report a mistake or a bug</a>
- </p>
- </footer>
+    <footer class="ftr">
+        <p class="panic"><b>If money is moving right now</b>, stop reading and phone your bank on the
+            number printed on your card. Every other step on this site can wait ten minutes. That one cannot.</p>
+        <p>Breachlight is a reference, not a helpline, a lawyer or a forensics firm. Local law, your bank’s
+            rules and your employer’s policy always win. If a crime has been committed, report it to the police.</p>
+        <p class="muted">Static, offline-capable, no tracking, no network calls, nothing you type ever
+        leaves this device. <span id="verLine"></span>
+        <a class="ftr-link"
+        href="mailto:breachlight@labidi.eu?subject=Breachlight%20feedback">Report a mistake or a bug</a>
+        </p>
+    </footer>
 
- <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
- <script src="core.js"></script>
+    <script src="core.js"></script>
 
- <script src="data-terms.js"></script>
- <script src="data-defend.js"></script>
- <script src="data-plays.js"></script>
- <script src="data-trees.js"></script>
- <script src="data-logs.js"></script>
- <script src="data-ad-entra.js"></script>
- <script src="data-ad-entra-plays.js"></script>
- <script src="data-phish-plays.js"></script>
+    <script src="data-terms.js"></script>
+    <script src="data-defend.js"></script>
+    <script src="data-plays.js"></script>
+    <script src="data-trees.js"></script>
+    <script src="data-logs.js"></script>
+    <script src="data-ad-entra.js"></script>
+    <script src="data-ad-entra-plays.js"></script>
+    <script src="data-phish-plays.js"></script>
 
- <script src="pages.js"></script>
- <script src="app.js"></script>
+    <script src="pages.js"></script>
+    <script src="app.js"></script>
 </body>
 
 </html>
