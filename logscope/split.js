@@ -49,18 +49,29 @@
         return s;
     }
 
+    /** Untruncated variant for machine-read output. Excel is not the reader. */
+    function rawCell(v) {
+        if (v === null || v === undefined) return '';
+        const s = typeof v === 'string' ? v : String(v);
+        if (/[",\r\n]/.test(s) || /^\s|\s$/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+        return s;
+    }
+
     const csvRow = arr => arr.map(csvCell).join(',') + '\r\n';
 
-    /** Buffered writer. Finished chunks become Blobs so they leave the JS heap. */
-    function makeSink(filename, header) {
+    /** Buffered writer. Finished chunks become Blobs so they leave the JS heap.
+        `rawCells` disables the Excel cell cap: subset.csv is re-ingested by the
+        analyser, and truncating a JSON cell would corrupt it silently. */
+    function makeSink(filename, header, rawCells) {
         const parts = [];
+        const cell = rawCells ? rawCell : csvCell;
         let buf = '\uFEFF';            // BOM, so Excel reads UTF-8 correctly
         let rows = 0;
         if (header) buf += csvRow(header);
         return {
             filename: filename,
             write(arr) {
-                buf += csvRow(arr);
+                buf += arr.map(cell).join(',') + '\r\n';
                 rows++;
                 if (buf.length > FLUSH) { parts.push(new Blob([buf])); buf = ''; }
             },
@@ -285,13 +296,26 @@
             if (String(op || '').toLowerCase().indexOf(filters.op.trim().toLowerCase()) < 0) return false;
         }
         if (filters.from || filters.to) {
-            const t = Date.parse(created);
+            /* A row with no readable timestamp is kept: losing evidence to a
+               date filter is worse than showing one row too many. */
+            const t = parseUtc(created);
             if (!isNaN(t)) {
-                if (filters.from && t < Date.parse(filters.from)) return false;
-                if (filters.to && t > Date.parse(filters.to) + 86399000) return false;
+                if (filters.from && t < parseUtc(filters.from)) return false;
+                if (filters.to && t > parseUtc(filters.to) + 86399000) return false;
             }
         }
         return true;
+    }
+
+    /** UAL timestamps are UTC but written without a zone designator; parsing
+        them as local time shifts rows across date-filter boundaries. */
+    function parseUtc(s) {
+        if (!s) return NaN;
+        const t = String(s).trim();
+        if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(t)) {
+            return Date.parse(t.replace(' ', 'T') + 'Z');
+        }
+        return Date.parse(t);
     }
 
     /**
@@ -306,6 +330,7 @@
         const stats = {
             rows: 0, parsed: 0, unparsed: 0, matched: 0,
             first: '', last: '', ips: 0, users: new Set(), ops: new Map(),
+            usersCapped: false, droppedCols: 0,
         };
 
         /* ---------------- pass one: learn the shape of the file ---------------- */
@@ -317,22 +342,38 @@
                 const o = rowObject(header, row);
                 const adRaw = pick(o, ['AuditData', 'auditdata']);
                 const ad = parseJson(adRaw);
-                if (!ad) { stats.unparsed++; return; }
-                stats.parsed++;
-                const flat = flatten(ad, '', {});
-                if (colCount.size < MAX_COLS) {
-                    Object.keys(flat).forEach(k => colCount.set(k, (colCount.get(k) || 0) + 1));
+                const created = (ad && pick(ad, ['CreationTime'])) || pick(o, ['CreationDate']);
+                const user = (ad && pick(ad, ['UserId'])) || pick(o, ['UserIds']);
+                const op = (ad && pick(ad, ['Operation'])) || pick(o, ['Operations']);
+                let ips;
+                if (ad) {
+                    stats.parsed++;
+                    const flat = flatten(ad, '', {});
+                    /* Count every key on every row; gating the whole loop once
+                       the cap was reached skewed the frequencies that decide
+                       which columns records.csv gets. */
+                    Object.keys(flat).forEach(k => {
+                        if (colCount.has(k)) colCount.set(k, colCount.get(k) + 1);
+                        else if (colCount.size < MAX_COLS * 3) colCount.set(k, 1);
+                    });
+                    ips = harvestIps(flat, adRaw);
+                } else {
+                    /* A row whose JSON would not parse still holds evidence.
+                       Harvest the raw text so the IP filter and the summary
+                       cannot silently lose it. */
+                    stats.unparsed++;
+                    ips = harvestIps({}, row.join(' '));
                 }
-                const created = pick(ad, ['CreationTime']) || pick(o, ['CreationDate']);
                 if (created) {
                     if (!stats.first || created < stats.first) stats.first = created;
                     if (!stats.last || created > stats.last) stats.last = created;
                 }
-                const user = pick(ad, ['UserId']) || pick(o, ['UserIds']);
-                const op = pick(ad, ['Operation']) || pick(o, ['Operations']);
-                if (user && stats.users.size < 5000) stats.users.add(String(user).toLowerCase());
+                if (user) {
+                    if (stats.users.size < 5000) stats.users.add(String(user).toLowerCase());
+                    else stats.usersCapped = true;
+                }
                 if (op) stats.ops.set(op, (stats.ops.get(op) || 0) + 1);
-                harvestIps(flat, adRaw).forEach(ip => {
+                ips.forEach(ip => {
                     let s = ipStat.get(ip);
                     if (!s) { s = { n: 0, first: created, last: created, users: new Set(), ops: new Set() }; ipStat.set(ip, s); }
                     s.n++;
@@ -353,19 +394,20 @@
 
         /* ---------------- pass two: write the tables ---------------- */
         function passTwo() {
-            const extra = Array.from(colCount.entries())
+            const ranked = Array.from(colCount.entries())
                 .filter(e => BASE_COLS.indexOf(e[0]) < 0)
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, MAX_COLS)
-                .map(e => e[0])
-                .sort();
+                .sort((a, b) => b[1] - a[1]);
+            const extra = ranked.slice(0, MAX_COLS).map(e => e[0]).sort();
+            /* Anything beyond the cap is absent from records.csv but never lost:
+               subset.csv retains the full record. Say so rather than hiding it. */
+            stats.droppedCols += Math.max(0, ranked.length - MAX_COLS);
 
             const records = makeSink('records.csv', BASE_COLS.concat(extra));
             const params = makeSink('parameters.csv', ['RowId', 'RecordId', 'CreationDate', 'UserId', 'Operation', 'Source', 'Name', 'Value']);
             const modprop = makeSink('modified-properties.csv', ['RowId', 'RecordId', 'CreationDate', 'UserId', 'Operation', 'Name', 'OldValue', 'NewValue']);
             const mail = makeSink('mail-items.csv', ['RowId', 'RecordId', 'CreationDate', 'UserId', 'Operation', 'FolderPath', 'InternetMessageId', 'SizeInBytes', 'Subject']);
             const affected = makeSink('affected-items.csv', ['RowId', 'RecordId', 'CreationDate', 'UserId', 'Operation', 'Name', 'Value']);
-            const subset = makeSink('subset.csv', null);
+            const subset = makeSink('subset.csv', null, true);
             const ipsum = makeSink('ip-summary.csv', ['IP', 'Records', 'FirstSeen', 'LastSeen', 'DistinctUsers', 'Users', 'Operations']);
 
             subset.write(header);
@@ -384,7 +426,7 @@
                 const recId = (ad && pick(ad, ['Id', 'RecordId'])) || pick(o, ['Identity', 'RecordId']);
 
                 const flat = ad ? flatten(ad, '', {}) : {};
-                const ips = ad ? harvestIps(flat, adRaw) : [];
+                const ips = ad ? harvestIps(flat, adRaw) : harvestIps({}, row.join(' '));
                 if (!matches(filters, ips, user, op, created)) return;
                 stats.matched++;
 
@@ -483,6 +525,6 @@
 
     window.LS_SPLIT = {
         splitUal, flatten, cleanIp, validIp, isIpv6, harvestIps,
-        makeCsvStream, csvCell, csvRow,
+        makeCsvStream, csvCell, csvRow, parseUtc,
     };
 })();

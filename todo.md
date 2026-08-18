@@ -24,7 +24,9 @@ rows in memory and stops at 80 MB.
 
 **Dev harnesses**, not linked from the site and not in the SW shell:
 `audit.html` (structure + search), `overflow.html` (layout at any width),
-`logscope/selftest.html` (parser, rules and the table splitter),
+`logscope/selftest.html` (parser, rules, the table splitter and an
+execution guard that loads `app.js` itself, so a syntax error in any
+shipped script fails the run),
 `logscope/loadtest.html` (the splitter against a real-size export, needs a CSV
 placed next to it and served locally), plus `logscope/run-selftest.ps1`
 and `logscope/shots.ps1`.
@@ -64,7 +66,7 @@ headlessly and is the preferred route.
  Baseline: 7 trees / 153 nodes / 61 plays / 153 terms / 29 defences /
  32 audit ops / 8 log sources / 38 symptoms.
 3. Logscope parser and rules:
- `powershell -File logscope/run-selftest.ps1` → expect `75 / 75 passed`.
+ `powershell -File logscope/run-selftest.ps1` → expect `86 / 86 passed`.
 4. Layout at any width:
  `powershell -File logscope/run-selftest.ps1 -Url "http://.../overflow.html?w=320"`
  Tested clean at 320 / 345 / 360 / 390 / 414 across 29 routes.

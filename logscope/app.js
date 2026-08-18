@@ -22,8 +22,10 @@
     const SPLIT = window.LS_SPLIT;
 
     /* The analyser holds every row in memory, so it has a ceiling. Anything
-    larger goes to the splitter, which streams and never holds the file. */
-const MAX_BYTES = 80 * 1024 * 1024;
+       larger goes to the splitter, which streams and never holds the file. */
+    const MAX_BYTES = 80 * 1024 * 1024;
+    const MAX_ROWS = 600;
+
     let FILES = []; // { name, kind, count }
     let EVENTS = []; // normalised, all files merged
     let FINDINGS = [];
@@ -31,6 +33,12 @@ const MAX_BYTES = 80 * 1024 * 1024;
     let filterText = '';
     let filterSrc = 'all';
     let pendingBig = null;          // file waiting for the table splitter
+
+    const out = () => $('#out');
+
+    /* ------------------------------------------------------------- ingestion */
+
+    function ingest(text, name) {
         let res;
         try {
             res = PARSE.parseText(text, name);
@@ -65,7 +73,10 @@ const MAX_BYTES = 80 * 1024 * 1024;
                     box.scrollIntoView({ block: 'center' });
                     pendingBig = f;
                     render();
+                }
+                return;
             }
+            const reader = new FileReader();
             reader.onload = () => ingest(String(reader.result || ''), f.name);
             reader.onerror = () => toast('Could not open ' + f.name);
             reader.readAsText(f);
@@ -299,7 +310,14 @@ const MAX_BYTES = 80 * 1024 * 1024;
 
         if (stats.unparsed) {
             host.appendChild(el('p', { class: 'muted small' }, rich(
-                stats.unparsed.toLocaleString() + ' row(s) had no readable **AuditData** JSON. They are counted but contribute no columns.')));
+                stats.unparsed.toLocaleString() + ' row(s) had no readable **AuditData** JSON. They are kept in subset.csv and searched for IP addresses as plain text, but contribute no columns.')));
+        }
+        if (stats.droppedCols) {
+            host.appendChild(el('p', { class: 'muted small' }, rich(
+                stats.droppedCols.toLocaleString() + ' rare column(s) did not fit records.csv. Nothing is lost: the full record for every row is in **subset.csv**.')));
+        }
+        if (stats.usersCapped) {
+            host.appendChild(el('p', { class: 'muted small', text: 'The account counter stopped at 5,000 distinct accounts; treat that figure as "at least".' }));
         }
         if (!stats.matched) {
             host.appendChild(el('p', { class: 'lede' }, rich(
@@ -323,8 +341,8 @@ const MAX_BYTES = 80 * 1024 * 1024;
         [
             'Open **records.csv** in Excel and use a normal column filter. **AllIPs** holds every address found in the record, so filtering there cannot miss one hidden in the JSON.',
             'The other tables join back on **RowId**, and on **RecordId** where the export provides one.',
-            '**subset.csv** keeps the original columns, so if you filtered it down below 80 MB you can load it straight back into the analyser above.',
-            'Excel stops at 32,767 characters in a cell. Anything longer is marked `...[truncated]` rather than silently cut.',
+            '**subset.csv** keeps the original columns with **nothing truncated**, so if you filtered it down below 80 MB you can load it straight back into the analyser above.',
+            'In the Excel-facing tables, any cell beyond the 32,767-character limit is marked `...[truncated]` rather than silently cut. The untouched value is always in subset.csv.',
         ].forEach(x => how.appendChild(el('li', null, rich(x))));
         host.appendChild(how);
 
@@ -333,6 +351,7 @@ const MAX_BYTES = 80 * 1024 * 1024;
             const ul = el('ul', { class: 'matches' });
             stats.topOps.forEach(([op, n]) => ul.appendChild(el('li', { text: op + '  ·  ' + n.toLocaleString() })));
             host.appendChild(ul);
+        }
     }
 
     function viewFindings() {

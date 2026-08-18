@@ -10,30 +10,30 @@
    online and behaves identically offline.
    ========================================================================== */
 
-const VERSION = 'breachlight-v7';
+const VERSION = 'breachlight-v8';
 const SHELL = [
     './',
     './index.html',
-    './style.css',
-    './core.js',
-    './pages.js',
-    './app.js',
-    './data-terms.js',
-    './data-defend.js',
-    './data-plays.js',
-    './data-trees.js',
-    './data-logs.js',
-    './data-ad-entra.js',
-    './data-ad-entra-plays.js',
-    './data-phish-plays.js',
-    './manifest.webmanifest',
+    './style.css?v=1',
+    './core.js?v=1',
+    './pages.js?v=1',
+    './app.js?v=1',
+    './data-terms.js?v=1',
+    './data-defend.js?v=1',
+    './data-plays.js?v=1',
+    './data-trees.js?v=1',
+    './data-logs.js?v=1',
+    './data-ad-entra.js?v=1',
+    './data-ad-entra-plays.js?v=1',
+    './data-phish-plays.js?v=1',
+    './manifest.webmanifest?v=1',
     './logscope/',
     './logscope/index.html',
-    './logscope/logscope.css',
-    './logscope/parse.js',
-    './logscope/split.js',
-    './logscope/rules.js',
-    './logscope/app.js',
+    './logscope/logscope.css?v=1',
+    './logscope/parse.js?v=1',
+    './logscope/split.js?v=1',
+    './logscope/rules.js?v=1',
+    './logscope/app.js?v=1',
 ];
 
 self.addEventListener('install', event => {
@@ -57,5 +57,9 @@ self.addEventListener('fetch', event => {
                     caches.open(VERSION).then(c => c.put(req, copy)).catch(() => { });
                 }
                 return res;
-            }).catch(() => caches.match(req).then(hit => hit || caches.match('./index.html'))));
+            }).catch(() =>
+                /* ignoreSearch: a ?v= mismatch must never turn into a dead
+                   page when the network is already gone. */
+                caches.match(req, { ignoreSearch: true })
+                    .then(hit => hit || caches.match('./index.html'))));
 });
