@@ -66,13 +66,16 @@
     function readFiles(fileList) {
         Array.prototype.slice.call(fileList).forEach(f => {
             if (f.size > MAX_BYTES) {
-                toast(f.name + ' is too big to analyse in one piece. Use the table splitter below.');
+                pendingBig = f;
+                toast(f.name + ' is too big to analyse in one piece: sent to the table splitter.');
+                render();
+                /* after render, so we open the freshly built panel */
                 const box = $('#splitBox');
                 if (box) {
+                    const chosen = $('#splitChosen');
+                    if (chosen) chosen.textContent = f.name + '  \u00b7  ' + fmtSize(f.size);
                     box.open = true;
                     box.scrollIntoView({ block: 'center' });
-                    pendingBig = f;
-                    render();
                 }
                 return;
             }
@@ -186,15 +189,22 @@
      * JSON cell, which Excel cannot filter. This streams the file off disk and
      * writes joinable tables, so "show me everything from this IP" becomes a
      * column filter instead of a research project.
+     *
+     * Built once and reused across renders: a split can run for minutes, and
+     * rebuilding the panel on a tab switch would orphan its progress bar and
+     * throw away finished download links.
      */
+    let splitNode = null;
+
     function splitBlock() {
+        if (splitNode) return splitNode;
         const box = el('details', { class: 'paste', id: 'splitBox' });
         box.appendChild(el('summary', { text: '🧰 Split a very large Purview export into tables' }));
 
         box.appendChild(el('p', { class: 'muted' }, rich(
             'For exports too big to analyse in one piece, or any file where the **AuditData** column needs to become real columns. The file is read in slices and never held in memory, so size is not the limit. Nothing leaves this browser.')));
 
-        const chosen = el('p', { class: 'muted small', text: pendingBig ? pendingBig.name + '  ·  ' + fmtSize(pendingBig.size) : 'No file chosen yet.' });
+        const chosen = el('p', { class: 'muted small', id: 'splitChosen', text: pendingBig ? pendingBig.name + '  \u00b7  ' + fmtSize(pendingBig.size) : 'No file chosen yet.' });
 
         const fileIn = el('input', {
             type: 'file', accept: '.csv,.txt,text/csv', style: 'display:none',
@@ -276,6 +286,7 @@
         box.appendChild(bar);
         box.appendChild(status);
         box.appendChild(results);
+        splitNode = box;
         return box;
     }
 
@@ -285,7 +296,11 @@
         return n + ' B';
     }
 
+    let splitUrls = [];   // blob URLs of the previous run, revoked on replace
+
     function renderSplitResult(host, tables, stats) {
+        splitUrls.forEach(u => URL.revokeObjectURL(u));
+        splitUrls = [];
         host.textContent = '';
 
         const s = el('div', { class: 'stats' });
@@ -328,10 +343,10 @@
         const list = el('div', { class: 'files' });
         tables.forEach(t => {
             const url = URL.createObjectURL(t.blob);
+            splitUrls.push(url);
             const a = el('a', {
                 class: 'btn ghost tiny', href: url, download: t.filename,
                 title: t.label,
-                onclick: () => setTimeout(() => URL.revokeObjectURL(url), 30000),
             }, '⤓ ' + t.filename + '  (' + t.rows.toLocaleString() + ')');
             list.appendChild(a);
         });
@@ -679,6 +694,10 @@
         else if (view === 'pivots') body.appendChild(viewPivots());
         else body.appendChild(viewCoverage());
         root.appendChild(body);
+
+        /* keep the splitter reachable after files are loaded, or an oversized
+           drop would have nowhere to land */
+        root.appendChild(splitBlock());
     }
 
     function helpBlock() {

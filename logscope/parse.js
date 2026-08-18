@@ -97,6 +97,12 @@
 
     function toDate(v) {
         if (!v) return null;
+        /* Purview and message-trace timestamps are UTC but written without a
+           zone designator; a bare "new Date" reads those as local time and
+           misaligns them against zoned Entra rows. */
+        if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(v.trim())) {
+            v = v.trim().replace(' ', 'T') + 'Z';
+        }
         const d = new Date(v);
         if (!isNaN(d.getTime())) return d;
         /* Portal CSV sometimes exports "3/14/2026, 2:04:11 PM" or

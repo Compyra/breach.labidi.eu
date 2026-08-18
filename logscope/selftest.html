@@ -171,6 +171,22 @@
             })());
             ok('empty handled', LS_PARSE.parseText('', 'e.txt').kind === 'empty');
 
+            /* Zoneless UAL timestamps are UTC; parsing them as local time
+               misaligns them against zoned Entra rows. */
+            const rTz = LS_PARSE.parseText(
+                'CreationDate,UserIds,Operations,AuditData\n' +
+                '2026-08-11T09:15:00,a@example.org,UserLoggedIn,"{""CreationTime"":""2026-08-11T09:15:00"",""Operation"":""UserLoggedIn"",""UserId"":""a@example.org""}"',
+                'tz.csv');
+            ok('analyser reads zoneless UAL timestamps as UTC',
+                rTz.events[0].ts && rTz.events[0].ts.toISOString() === '2026-08-11T09:15:00.000Z',
+                rTz.events[0].ts && rTz.events[0].ts.toISOString());
+            const rTz2 = LS_PARSE.parseText(
+                '[{"userPrincipalName":"a@example.org","appDisplayName":"App","createdDateTime":"2026-08-11T09:15:00+02:00","status":{"errorCode":0}}]',
+                'z.json');
+            ok('analyser keeps explicit zone offsets',
+                rTz2.events[0].ts && rTz2.events[0].ts.toISOString() === '2026-08-11T07:15:00.000Z',
+                rTz2.events[0].ts && rTz2.events[0].ts.toISOString());
+
             /* ---------------- rules ---------------- */
 
             const all = [].concat(rSignin.events, rAudit.events, rUal.events, rTrace.events, rSigninCsv.events).sort((a, b) => (a.ts ? a.ts.getTime(): 0) - (b.ts ? b.ts.getTime(): 0));
